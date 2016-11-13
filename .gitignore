@@ -1,0 +1,7 @@
+*.pkl
+*.html
+*.md
+venv/
+*.pyc
+.DS_Store
+*.question/
