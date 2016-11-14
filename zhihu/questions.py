@@ -42,13 +42,13 @@ class QuestionProcesser(object):
                         'url': 'https://www.zhihu.com/questions/' + str(self.question.id),
                         'excerpt': self.question.excerpt
                     },
-                    'available_answer_ids': self.get_available_answer_ids(),
+                    'visible_answer_ids': self.get_visible_answer_ids(),
                 }
             else:
                 with open(self.status_path) as f:
                     self.status = json.load(f)
 
-            self.available_answer_ids = set(self.status['available_answer_ids'])
+            self.visible_answer_ids = set(self.status['visible_answer_ids'])
 
     def __del__(self):
         if self.status:
@@ -76,7 +76,7 @@ class QuestionProcesser(object):
                         s += a.content
                         f.write(s)
 
-    def get_available_answer_ids(self):
+    def get_visible_answer_ids(self):
         ids = [a.id for a in self.question.answers if not a.suggest_edit.status]
         return ids
 
@@ -85,14 +85,14 @@ class QuestionProcesser(object):
             self.status['deleted'] = True
         else:
             try:
-                new_ids = set(self.get_available_answer_ids())
+                new_ids = set(self.get_visible_answer_ids())
             except:
-                new_ids = self.available_answer_ids
-            deleted_ids = self.available_answer_ids.difference(new_ids)
+                new_ids = self.visible_answer_ids
+            deleted_ids = self.visible_answer_ids.difference(new_ids)
             for i in deleted_ids:
                 self.copy_to_deleted(i)
-            self.available_answer_ids = new_ids
-            self.status['available_answer_ids'] = list(new_ids)
+            self.visible_answer_ids = new_ids
+            self.status['visible_answer_ids'] = list(new_ids)
             self.save_to_answer()
 
     def monitor(self, interval):
