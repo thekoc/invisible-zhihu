@@ -6,8 +6,8 @@ import time
 from bs4 import BeautifulSoup
 
 class QuestionSpider(object):
-    def __init__(self):
-        self.question_queue = question_queue
+    def __init__(self, client):
+        self.client = client
 
     def get_new_quetion_urls(self):
         question_urls = []
@@ -26,10 +26,10 @@ class QuestionSpider(object):
 class QuestionProcesser(object):
     def __init__(self, client, url):
             self.status = None
-            self.question = client.question(url)
+            self.question = client.question(int(url.split('/')[-1]))
             self.url = url
             self.client = client
-            self.work_directory = str(self.question.id) + '.question'
+            self.work_directory = self.question.title + '-' + str(self.question.id) + '.question'
             self.answer_directory = os.path.join(self.work_directory, 'answers')
             self.deleted_answer_directory = os.path.join(self.work_directory, 'deleted')
             self.status_path = os.path.join(self.work_directory, 'status.json')
@@ -38,10 +38,12 @@ class QuestionProcesser(object):
                     os.mkdir(d)
             if not os.path.isfile(self.status_path):
                 self.status = {
+                    'question_info': {
+                        'url': 'https://www.zhihu.com/questions/' + str(self.question.id),
+                        'excerpt': self.question.excerpt
+                    },
                     'available_answer_ids': self.get_available_answer_ids(),
                 }
-                with open(os.path.join(self.work_directory, 'question.txt'), 'w') as f:
-                    f.write(str(self.question.id) + '\n' + self.question.title + '\n\n' + self.question.excerpt)
             else:
                 with open(self.status_path) as f:
                     self.status = json.load(f)

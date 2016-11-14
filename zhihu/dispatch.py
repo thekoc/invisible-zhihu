@@ -21,7 +21,7 @@ class QuestionDispatcher(object):
                 self.question_set = set(json.load(f))
 
         self.queue = queue.Queue()
-        self.spider = questions.QuestionSpider()
+        self.spider = questions.QuestionSpider(client)
 
     def __del__(self):
         with open(self.questions_path, 'w') as f:
@@ -31,7 +31,7 @@ class QuestionDispatcher(object):
         while True:
             new_urls = self.spider.get_new_quetion_urls()
             for url in new_urls:
-                self.queue.put(new_urls)
+                self.queue.put(url)
             time.sleep(interval)
 
     def monitor_question_loop(self, interval):
