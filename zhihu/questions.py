@@ -6,7 +6,7 @@ import time
 from bs4 import BeautifulSoup
 
 class QuestionSpider(object):
-    def __init__(self, question_queue):
+    def __init__(self):
         self.question_queue = question_queue
 
     def get_new_quetion_urls(self):
@@ -23,14 +23,10 @@ class QuestionSpider(object):
             question_urls.append(host + t['href'])
         return question_urls
 
-    def update(self):
-        for url in self.get_new_quetion_urls():
-            self.question_queue.put(url)
-
 class QuestionProcesser(object):
     def __init__(self, client, url):
             self.status = None
-            self.question = client.from_url(url)
+            self.question = client.question(url)
             self.url = url
             self.client = client
             self.work_directory = str(self.question.id) + '.question'
