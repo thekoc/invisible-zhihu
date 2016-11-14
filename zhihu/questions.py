@@ -25,19 +25,19 @@ class QuestionSpider(object):
 
 class QuestionProcesser(object):
     def __init__(self, client, url):
-            self.status = None
+            self.meta_info = None
             self.question = client.question(int(url.split('/')[-1]))
             self.url = url
             self.client = client
             self.work_directory = self.question.title + '-' + str(self.question.id) + '.question'
             self.answer_directory = os.path.join(self.work_directory, 'answers')
             self.deleted_answer_directory = os.path.join(self.work_directory, 'deleted')
-            self.status_path = os.path.join(self.work_directory, 'status.json')
+            self.meta_info_path = os.path.join(self.work_directory, 'meta_info.json')
             for d in [self.work_directory, self.answer_directory, self.deleted_answer_directory]:
                 if not os.path.isdir(d):
                     os.mkdir(d)
-            if not os.path.isfile(self.status_path):
-                self.status = {
+            if not os.path.isfile(self.meta_info_path):
+                self.meta_info = {
                     'question_info': {
                         'url': 'https://www.zhihu.com/questions/' + str(self.question.id),
                         'excerpt': self.question.excerpt
@@ -45,15 +45,15 @@ class QuestionProcesser(object):
                     'visible_answer_ids': self.get_visible_answer_ids(),
                 }
             else:
-                with open(self.status_path) as f:
-                    self.status = json.load(f)
+                with open(self.meta_info_path) as f:
+                    self.meta_info = json.load(f)
 
-            self.visible_answer_ids = set(self.status['visible_answer_ids'])
+            self.visible_answer_ids = set(self.meta_info['visible_answer_ids'])
 
     def __del__(self):
-        if self.status:
-            with open(self.status_path, 'w') as f:
-                json.dump(self.status, f)
+        if self.meta_info:
+            with open(self.meta_info_path, 'w') as f:
+                json.dump(self.meta_info, f)
 
     def copy_to_deleted(self, answer_id):
         print('new_deleted_answer')
@@ -65,7 +65,7 @@ class QuestionProcesser(object):
 
     def save_to_answer(self):
         for a in self.question.answers:
-            if not a.suggest_edit.status:
+            if not a.suggest_edit.meta_info:
                 answer_path = os.path.join(self.answer_directory, str(a.id) + '.html')
                 if not os.path.isfile(answer_path):
                     print('newfile')
@@ -77,12 +77,12 @@ class QuestionProcesser(object):
                         f.write(s)
 
     def get_visible_answer_ids(self):
-        ids = [a.id for a in self.question.answers if not a.suggest_edit.status]
+        ids = [a.id for a in self.question.answers if not a.suggest_edit.meta_info]
         return ids
 
     def update(self):
         if False:
-            self.status['deleted'] = True
+            self.meta_info['deleted'] = True
         else:
             try:
                 new_ids = set(self.get_visible_answer_ids())
@@ -92,7 +92,7 @@ class QuestionProcesser(object):
             for i in deleted_ids:
                 self.copy_to_deleted(i)
             self.visible_answer_ids = new_ids
-            self.status['visible_answer_ids'] = list(new_ids)
+            self.meta_info['visible_answer_ids'] = list(new_ids)
             self.save_to_answer()
 
     def monitor(self, interval):
