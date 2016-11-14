@@ -59,7 +59,7 @@ class QuestionDispatcher(object):
 
     def monitor(self, question_url):
         if not self.stop:
-            p = questions.QuestionProcesser(self.client, question_url)
+            p = questions.QuestionProcesser(self.client.from_url(question_url))
             p.update()
 
     def run(self):

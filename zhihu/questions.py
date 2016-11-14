@@ -4,6 +4,7 @@ import shutil
 import json
 import time
 from bs4 import BeautifulSoup
+from tools import qid_to_url
 
 class QuestionSpider(object):
     def __init__(self, client):
@@ -24,12 +25,11 @@ class QuestionSpider(object):
         return question_urls
 
 class QuestionProcesser(object):
-    def __init__(self, client, url):
+    def __init__(self, question):
             self.meta_info = None
-            self.question = client.question(int(url.split('/')[-1]))
-            self.url = url
-            self.client = client
-            self.work_directory = self.question.title + '-' + str(self.question.id) + '.question'
+            self.question = question
+            self.url = qid_to_url(self.question.id)
+            self.work_directory = str(self.question.id) + '.question'
             self.answer_directory = os.path.join(self.work_directory, 'answers')
             self.deleted_answer_directory = os.path.join(self.work_directory, 'deleted')
             self.meta_info_path = os.path.join(self.work_directory, 'meta_info.json')
@@ -39,7 +39,8 @@ class QuestionProcesser(object):
             if not os.path.isfile(self.meta_info_path):
                 self.meta_info = {
                     'question_info': {
-                        'url': 'https://www.zhihu.com/questions/' + str(self.question.id),
+                        'url': self.url,
+                        'title': self.question.title,
                         'excerpt': self.question.excerpt
                     },
                     'visible_answer_ids': self.get_visible_answer_ids(),
@@ -63,28 +64,60 @@ class QuestionProcesser(object):
         else:
             shutil.copy(file_path, self.deleted_answer_directory)
 
-    def save_to_answer(self):
+    def save_new_answers(self):
+        def people_to_tag(people):
+            info = BeautifulSoup('', 'html.parser').new_tag('a', href='https://www.zhihu.com/people/' + str(people.id))
+            info.string = people.name
+            return info
+
         for a in self.question.answers:
-            if not a.suggest_edit.meta_info:
             if not a.suggest_edit.status:
                 answer_path = os.path.join(self.answer_directory, str(a.id) + '.html')
                 if not os.path.isfile(answer_path):
                     print('newfile')
+                    soup = BeautifulSoup('', 'html.parser')
+                    title = soup.new_tag('div', class_='title', href=self.url)
+                    title.string = '问题: ' + self.question.title
+                    soup.append(title)
+
+                    author = soup.new_tag('div', class_='author')
+                    author.string = '作者: '
+                    author.append(people_to_tag(a.author))
+                    soup.append(author)
+
+                    content = soup.new_tag('div', class_='content')
+                    content.string = '答案: '
+                    content.append(BeautifulSoup(a.content, 'html.parser'))
+                    soup.append(content)
+
+                    comments = soup.new_tag('div', class_='comments')
+                    comments.string = '评论: '
+                    for c in a.comments:
+                        comment = soup.new_tag('div', class_='comment')
+                        if c.reply_to:
+                            reply = soup.new_tag('div', class_='reply')
+                            reply.string = '回复: '
+                            reply.append(people_to_tag(c.reply_to))
+
+                        comment_author = soup.new_tag('div', class_='comment_author')
+                        comment_author.append(people_to_tag(c.author))
+                        comment.append(comment_author)
+
+                        comment_content = soup.new_tag('div', class_='comment_content')
+                        comment_content.append(BeautifulSoup(c.content, 'html.parser'))
+                        comment.append(comment_content)
+
+                        comments.append(comment)
+                    soup.append(comments)
                     with open(answer_path, 'w') as f:
-                        s = ''
-                        s += '<meta http-equiv="content-type" content="text/html; charset=UTF-8" />\n'
-                        s += '<a href=https://www.zhihu.com/people/%s> %s </a>\n' % (a.author.id, a.author.name)
-                        s += a.content
-                        f.write(s)
+                        f.write(soup.prettify())
 
     def get_visible_answer_ids(self):
-        ids = [a.id for a in self.question.answers if not a.suggest_edit.meta_info]
         ids = [a.id for a in self.question.answers if not a.suggest_edit.status]
         return ids
 
     def update(self):
         if False:
-            self.meta_info['deleted'] = True
             self.status['deleted'] = True
         else:
             try:
@@ -97,6 +130,7 @@ class QuestionProcesser(object):
             self.visible_answer_ids = new_ids
             self.meta_info['visible_answer_ids'] = list(new_ids)
             self.save_to_answer()
+            self.save_new_answers()
 
     def monitor(self, interval):
         while True:
