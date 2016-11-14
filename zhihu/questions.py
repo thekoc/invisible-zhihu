@@ -99,59 +99,130 @@ class QuestionProcesser(object):
 
 class AnswerProcessor(object):
     def __init__(self, answer, directory):
+        self.meta_info = None
         self.answer = answer
         self.work_directory = os.path.join(directory, str(answer.id) + '.answer')
         self.deleted_comment_directory = os.path.join(self.work_directory, 'deleted_comments')
         self.answer_path = os.path.join(self.work_directory, 'answer.html')
+        self.meta_info_path = os.path.join(self.work_directory, 'meta_info.json')
+
         for d in [self.work_directory, self.deleted_comment_directory]:
             if not os.path.isdir(d):
-                os.mkdir(d)
+                os.makedirs(d)
+
+        if not os.path.isfile(self.meta_info_path):
+            self.meta_info = {
+                'answer_info': {
+                    'excerpt': self.answer.excerpt
+                },
+                'visible_comment_ids': [],
+            }
+            self.meta_info['visible_comment_ids'] = self.get_visible_comment_ids()
+        else:
+            with open(self.meta_info_path) as f:
+                self.meta_info = json.load(f)
+
+        self.visible_comment_ids = set(self.meta_info['visible_comment_ids'])
+
+    def __del__(self):
+        if self.meta_info:
+            with open(self.meta_info_path, 'w') as f:
+                json.dump(self.meta_info, f)
+
+    def get_visible_comment_ids(self):
+        try:
+            ids = [c.id for c in self.answer.comments]
+            return ids
+        except Exception as e:
+            print(e)
+            return self.meta_info['visible_comment_ids']
+
+    def people_to_tag(self, people):
+        people_tag = BeautifulSoup('', 'html.parser').new_tag('a', href='https://www.zhihu.com/people/' + str(people.id))
+        people_tag.string = people.name
+        return people_tag
+
+    def comment_to_tag(self, comment):
+        soup = BeautifulSoup('', 'html.parser')
+        comment_tag = soup.new_tag('div', **{'class': 'comment'}, id=str(comment.id))
+        if comment.reply_to:
+            reply = soup.new_tag('div', **{'class': 'reply'})
+            reply.string = '回复: '
+            reply.append(self.people_to_tag(comment.reply_to))
+            comment_tag.append(reply)
+        comment_author = soup.new_tag('div', **{'class': 'comment_author'})
+        comment_author.append(self.people_to_tag(comment.author))
+        comment_tag.append(comment_author)
+
+        comment_content = soup.new_tag('div', **{'class': 'comment_content'})
+        comment_content.append(BeautifulSoup(comment.content, 'html.parser'))
+        comment_tag.append(comment_content)
+        return comment_tag
 
     def html(self):
-        def people_to_tag(people):
-            info = BeautifulSoup('', 'html.parser').new_tag('a', href='https://www.zhihu.com/people/' + str(people.id))
-            info.string = people.name
-            return info
         soup = BeautifulSoup('', 'html.parser')
-        title = soup.new_tag('div', class_='title')
+        title = soup.new_tag('div', **{'class': 'title'})
         title.string = '问题: '
         title_url = soup.new_tag('a', href=qid_to_url(self.answer.question.id))
         title_url.string = self.answer.question.title
         title.append(title_url)
         soup.append(title)
 
-        author = soup.new_tag('div', class_='author')
+        author = soup.new_tag('div', **{'class': 'author'})
         author.string = '作者: '
-        author.append(people_to_tag(self.answer.author))
+        author.append(self.people_to_tag(self.answer.author))
         soup.append(author)
 
-        content = soup.new_tag('div', class_='content')
+        content = soup.new_tag('div', **{'class': 'content'})
         content.string = '答案: '
         content.append(BeautifulSoup(self.answer.content, 'html.parser'))
         soup.append(content)
 
-        comments = soup.new_tag('div', class_='comments')
+        comments = soup.new_tag('div', **{'class': 'comments'})
         comments.string = '评论: '
         for c in self.answer.comments:
-            comment = soup.new_tag('div', class_='comment', id=str(c.id))
-            if c.reply_to:
-                reply = soup.new_tag('div', class_='reply')
-                reply.string = '回复: '
-                reply.append(people_to_tag(c.reply_to))
-
-            comment_author = soup.new_tag('div', class_='comment_author')
-            comment_author.append(people_to_tag(c.author))
-            comment.append(comment_author)
-
-            comment_content = soup.new_tag('div', class_='comment_content')
-            comment_content.append(BeautifulSoup(c.content, 'html.parser'))
-            comment.append(comment_content)
-
-            comments.append(comment)
+            comments.append(self.comment_to_tag(c))
         soup.append(comments)
         return soup.prettify()
+
+    def copy_comment_to_delete(self, comment_id):
+        with open(self.answer_path) as f:
+            soup = BeautifulSoup(f.read(), 'html.parser')
+
+        comment = soup.find('div', class_='comment', id=str(comment_id))
+        content = comment.find('div', class_='comment_content')
+        content.string.wrap(soup.new_tag('del'))
+        path = os.path.join(self.deleted_comment_directory, str(comment_id) + '.html')
+        with open(path, 'w') as f:
+            f.write(comment.prettify())
+        with open(self.answer_path, 'w') as f:
+            f.write(soup.prettify())
+
+    def append_added_comments(self, comment_ids):
+        comment_tags = []
+        for c in self.answer.comments:
+            if c.id in comment_ids:
+                print('new_comment')
+                comment_tags.append(self.comment_to_tag(c))
+
+        with open(self.answer_path) as f:
+            soup = BeautifulSoup(f.read(), 'html.parser')
+        comments = soup.find('div', class_='comments')
+        for t in comment_tags:
+            comments.append(t)
+        with open(self.answer_path, 'w') as f:
+            f.write(soup.prettify())
 
     def update(self):
         if not os.path.isfile(self.answer_path):
             with open(self.answer_path, 'w') as f:
                 f.write(self.html())
+
+        new_ids = set(self.get_visible_comment_ids())
+        deleted_ids = self.visible_comment_ids.difference(new_ids)
+        added_ids = new_ids.difference(self.visible_comment_ids)
+        for i in deleted_ids:
+            self.copy_comment_to_delete(i)
+        self.append_added_comments(added_ids)
+        self.visible_comment_ids = new_ids
+        self.meta_info['visible_comment_ids'] = list(new_ids)
