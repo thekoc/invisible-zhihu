@@ -58,59 +58,19 @@ class QuestionProcesser(object):
 
     def copy_to_deleted(self, answer_id):
         print('new_deleted_answer')
-        file_path = os.path.join(self.answer_directory, str(answer_id) + '.html')
-        if not os.path.isfile(file_path):
-            raise FileNotFoundError(file_path)
+        path = os.path.join(self.answer_directory, str(answer_id) + '.answer')
+        if not os.path.isdir(path):
+            raise FileNotFoundError(path)
         else:
-            shutil.copy(file_path, self.deleted_answer_directory)
+            shutil.copy(path, self.deleted_answer_directory)
 
-    def save_new_answers(self):
-        def people_to_tag(people):
-            info = BeautifulSoup('', 'html.parser').new_tag('a', href='https://www.zhihu.com/people/' + str(people.id))
-            info.string = people.name
-            return info
-
+    def update_answers(self):
         for a in self.question.answers:
             if not a.suggest_edit.status:
-                answer_path = os.path.join(self.answer_directory, str(a.id) + '.html')
-                if not os.path.isfile(answer_path):
-                    print('newfile')
-                    soup = BeautifulSoup('', 'html.parser')
-                    title = soup.new_tag('div', class_='title', href=self.url)
-                    title.string = '问题: ' + self.question.title
-                    soup.append(title)
+                print('newfile')
+                a = AnswerProcessor(a, self.answer_directory)
+                a.update()
 
-                    author = soup.new_tag('div', class_='author')
-                    author.string = '作者: '
-                    author.append(people_to_tag(a.author))
-                    soup.append(author)
-
-                    content = soup.new_tag('div', class_='content')
-                    content.string = '答案: '
-                    content.append(BeautifulSoup(a.content, 'html.parser'))
-                    soup.append(content)
-
-                    comments = soup.new_tag('div', class_='comments')
-                    comments.string = '评论: '
-                    for c in a.comments:
-                        comment = soup.new_tag('div', class_='comment')
-                        if c.reply_to:
-                            reply = soup.new_tag('div', class_='reply')
-                            reply.string = '回复: '
-                            reply.append(people_to_tag(c.reply_to))
-
-                        comment_author = soup.new_tag('div', class_='comment_author')
-                        comment_author.append(people_to_tag(c.author))
-                        comment.append(comment_author)
-
-                        comment_content = soup.new_tag('div', class_='comment_content')
-                        comment_content.append(BeautifulSoup(c.content, 'html.parser'))
-                        comment.append(comment_content)
-
-                        comments.append(comment)
-                    soup.append(comments)
-                    with open(answer_path, 'w') as f:
-                        f.write(soup.prettify())
 
     def get_visible_answer_ids(self):
         ids = [a.id for a in self.question.answers if not a.suggest_edit.status]
@@ -129,14 +89,69 @@ class QuestionProcesser(object):
                 self.copy_to_deleted(i)
             self.visible_answer_ids = new_ids
             self.meta_info['visible_answer_ids'] = list(new_ids)
-            self.save_to_answer()
-            self.save_new_answers()
+            self.update_answers()
 
     def monitor(self, interval):
         while True:
             self.update()
             time.sleep(interval)
 
-    def pedding(self):
-        while True:
-            pass
+
+class AnswerProcessor(object):
+    def __init__(self, answer, directory):
+        self.answer = answer
+        self.work_directory = os.path.join(directory, str(answer.id) + '.answer')
+        self.deleted_comment_directory = os.path.join(self.work_directory, 'deleted_comments')
+        self.answer_path = os.path.join(self.work_directory, 'answer.html')
+        for d in [self.work_directory, self.deleted_comment_directory]:
+            if not os.path.isdir(d):
+                os.mkdir(d)
+
+    def html(self):
+        def people_to_tag(people):
+            info = BeautifulSoup('', 'html.parser').new_tag('a', href='https://www.zhihu.com/people/' + str(people.id))
+            info.string = people.name
+            return info
+        soup = BeautifulSoup('', 'html.parser')
+        title = soup.new_tag('div', class_='title')
+        title.string = '问题: '
+        title_url = soup.new_tag('a', href=qid_to_url(self.answer.question.id))
+        title_url.string = self.answer.question.title
+        title.append(title_url)
+        soup.append(title)
+
+        author = soup.new_tag('div', class_='author')
+        author.string = '作者: '
+        author.append(people_to_tag(self.answer.author))
+        soup.append(author)
+
+        content = soup.new_tag('div', class_='content')
+        content.string = '答案: '
+        content.append(BeautifulSoup(self.answer.content, 'html.parser'))
+        soup.append(content)
+
+        comments = soup.new_tag('div', class_='comments')
+        comments.string = '评论: '
+        for c in self.answer.comments:
+            comment = soup.new_tag('div', class_='comment', id=str(c.id))
+            if c.reply_to:
+                reply = soup.new_tag('div', class_='reply')
+                reply.string = '回复: '
+                reply.append(people_to_tag(c.reply_to))
+
+            comment_author = soup.new_tag('div', class_='comment_author')
+            comment_author.append(people_to_tag(c.author))
+            comment.append(comment_author)
+
+            comment_content = soup.new_tag('div', class_='comment_content')
+            comment_content.append(BeautifulSoup(c.content, 'html.parser'))
+            comment.append(comment_content)
+
+            comments.append(comment)
+        soup.append(comments)
+        return soup.prettify()
+
+    def update(self):
+        if not os.path.isfile(self.answer_path):
+            with open(self.answer_path, 'w') as f:
+                f.write(self.html())
