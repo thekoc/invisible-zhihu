@@ -3,6 +3,7 @@ import os
 from zhihu_oauth import ZhihuClient
 from questions import QuestionSpider
 from questions import QuestionProcesser
+from dispatch import QuestionDispatcher
 import requests
 import queue
 
@@ -23,10 +24,11 @@ def login():
 
 def main():
     client = login()
-    question = client.question(52559601)
-    print(question.id)
+    # question = client.question(20691441)
+    # print(dir(question))
+    # print(question.status)
     # for a in question.answers:
-    #     print(a.content)
+    #     print(a.author.id)
     # topic = client.topic(19551424)
     # i = 0
     # print(topic.avatar_url)
@@ -41,8 +43,11 @@ def main():
     # qs.update()
     # while not q.empty():
     #     print(q.get())
-    t = QuestionProcesser(client, 'https://www.zhihu.com/question/52212165')
-    t.run(5)
+    # t = QuestionProcesser(client, 'https://www.zhihu.com/question/52212165')
+
+    # t.monitor(5)
+    t = QuestionDispatcher(client)
+    t.run()
 
 
 if __name__ == '__main__':
