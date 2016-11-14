@@ -66,6 +66,7 @@ class QuestionProcesser(object):
     def save_to_answer(self):
         for a in self.question.answers:
             if not a.suggest_edit.meta_info:
+            if not a.suggest_edit.status:
                 answer_path = os.path.join(self.answer_directory, str(a.id) + '.html')
                 if not os.path.isfile(answer_path):
                     print('newfile')
@@ -78,11 +79,13 @@ class QuestionProcesser(object):
 
     def get_visible_answer_ids(self):
         ids = [a.id for a in self.question.answers if not a.suggest_edit.meta_info]
+        ids = [a.id for a in self.question.answers if not a.suggest_edit.status]
         return ids
 
     def update(self):
         if False:
             self.meta_info['deleted'] = True
+            self.status['deleted'] = True
         else:
             try:
                 new_ids = set(self.get_visible_answer_ids())
