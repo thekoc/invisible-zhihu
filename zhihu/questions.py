@@ -75,7 +75,8 @@ class QuestionProcesser(object):
                         f.write(s)
 
     def get_available_answer_ids(self):
-        return [a.id for a in self.question.answers if not a.suggest_edit.status]
+        ids = [a.id for a in self.question.answers if not a.suggest_edit.status]
+        return ids
 
     def update(self):
         if False:
@@ -83,14 +84,14 @@ class QuestionProcesser(object):
         else:
             try:
                 new_ids = set(self.get_available_answer_ids())
-                deleted_ids = self.available_answer_ids.difference(new_ids)
-                for i in deleted_ids:
-                    self.copy_to_deleted(i)
-                self.available_answer_ids = new_ids
-                self.status['available_answer_ids'] = list(new_ids)
-                self.save_to_answer()
             except:
-                self.status['deleted'] = True
+                new_ids = self.available_answer_ids
+            deleted_ids = self.available_answer_ids.difference(new_ids)
+            for i in deleted_ids:
+                self.copy_to_deleted(i)
+            self.available_answer_ids = new_ids
+            self.status['available_answer_ids'] = list(new_ids)
+            self.save_to_answer()
 
     def monitor(self, interval):
         while True:
