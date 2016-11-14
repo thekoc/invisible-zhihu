@@ -43,8 +43,9 @@ class QuestionProcesser(object):
                         'title': self.question.title,
                         'excerpt': self.question.excerpt
                     },
-                    'visible_answer_ids': self.get_visible_answer_ids(),
+                    'visible_answer_ids': [],
                 }
+                self.meta_info['visible_answer_ids'] = self.get_visible_answer_ids()
             else:
                 with open(self.meta_info_path) as f:
                     self.meta_info = json.load(f)
@@ -73,8 +74,12 @@ class QuestionProcesser(object):
 
 
     def get_visible_answer_ids(self):
-        ids = [a.id for a in self.question.answers if not a.suggest_edit.status]
-        return ids
+        try:
+            ids = [a.id for a in self.question.answers]
+            return ids
+        except Exception as e:
+            print(e)
+            return self.meta_info['visible_answer_ids']
 
     def update(self):
         if False:
