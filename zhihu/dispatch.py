@@ -8,6 +8,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 
 class QuestionDispatcher(object):
     def __init__(self, client):
+        self.stop = False
         self.client = client
         self.root_path = 'questions'
         if not os.path.isdir(self.root_path):
@@ -28,14 +29,14 @@ class QuestionDispatcher(object):
             json.dump(list(self.question_set), f)
 
     def question_update_loop(self, interval):
-        while True:
+        while not self.stop:
             new_urls = self.spider.get_new_quetion_urls()
             for url in new_urls:
                 self.queue.put(url)
             time.sleep(interval)
 
     def monitor_question_loop(self, interval):
-        while True:
+        while not self.stop:
             while not self.queue.empty():
                 url = self.queue.get()
                 self.question_set.add(url)
@@ -45,20 +46,30 @@ class QuestionDispatcher(object):
             questions = list(self.question_set)
             size = 10
             for i in range(0, len(questions), size):
-                pool = ThreadPool(size)
-                if i + size < len(questions):
-                    results = pool.map(self.monitor, questions[i: i + size])
-                else:
-                    results = pool.map(self.monitor, questions[i: -1])
-                pool.close()
-                pool.join()
-                time.sleep(interval)
+                if not self.stop:
+                    pool = ThreadPool(size)
+                    if i + size < len(questions):
+                        results = pool.map(self.monitor, questions[i: i + size])
+                    else:
+                        results = pool.map(self.monitor, questions[i: -1])
+                    pool.close()
+                    pool.join()
+                    time.sleep(interval)
+        print('stopped')
 
     def monitor(self, question_url):
-        p = questions.QuestionProcesser(self.client, question_url)
-        p.update()
+        if not self.stop:
+            p = questions.QuestionProcesser(self.client, question_url)
+            p.update()
 
     def run(self):
-        update_threading = threading.Thread(target=self.question_update_loop, args=(5,))
-        update_threading.start()
-        self.monitor_question_loop(10)
+        try:
+            update_thread = threading.Thread(target=self.question_update_loop, args=(5,))
+            update_thread.start()
+            monitor_thread = threading.Thread(target=self.monitor_question_loop, args=(5,))
+            monitor_thread.start()
+            update_thread.join()
+            monitor_thread.join()
+        except KeyboardInterrupt:
+            print('cleaning up...')
+            self.stop = True
