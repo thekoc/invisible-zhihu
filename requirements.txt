@@ -1,4 +1,6 @@
 beautifulsoup4==4.5.1
 bs4==0.0.1
+html2text==2016.9.19
 requests==2.11.1
 zhihu-oauth==0.0.22
+zhihu-py3==0.3.23

@@ -4,6 +4,7 @@ from zhihu_oauth import ZhihuClient
 from questions import QuestionSpider
 from questions import QuestionProcesser
 from dispatch import QuestionDispatcher
+from fake_zhihu import ZhihuClient as FakeClient
 import requests
 import queue
 
@@ -48,6 +49,11 @@ def main():
     # t.monitor(5)
     t = QuestionDispatcher(client)
     t.run()
+
+def test():
+    c = FakeClient()
+    c.login()
+    c.test()
 
 
 if __name__ == '__main__':
