@@ -58,23 +58,25 @@ class QuestionProcesser(object):
 
     def __del__(self):
         if self.meta_info:
+            print(self.meta_info)
             with open(self.meta_info_path, 'w') as f:
                 json.dump(self.meta_info, f)
 
     def copy_to_deleted(self, answer_id):
-        print('new_deleted_answer')
+        print('new_deleted_answer', answer_id)
         path = os.path.join(self.answer_directory, str(answer_id) + '.answer')
         if not os.path.isdir(path):
             raise FileNotFoundError(path)
         else:
-            shutil.copy(path, self.deleted_answer_directory)
+            dst = os.path.join(self.deleted_answer_directory, str(answer_id) + '.answer')
+            if not os.path.isdir(dst):
+                shutil.copytree(path, dst)
+
 
     def update_answers(self):
         for a in self.question.answers:
-            # if not a.suggest_edit.status:
-            if True:
-                a = AnswerProcessor(a, self.answer_directory)
-                a.update()
+            a = AnswerProcessor(a, self.answer_directory)
+            a.update()
 
 
     def get_visible_answer_ids(self):
@@ -94,6 +96,7 @@ class QuestionProcesser(object):
             except:
                 print('get new answer failed')
                 new_ids = self.visible_answer_ids
+            print(new_ids)
             deleted_ids = self.visible_answer_ids.difference(new_ids)
             for i in deleted_ids:
                 self.copy_to_deleted(i)
