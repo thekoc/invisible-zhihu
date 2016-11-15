@@ -5,9 +5,12 @@ import os
 import time
 import threading
 from multiprocessing.dummy import Pool as ThreadPool
+from itertools import repeat
 
 class QuestionDispatcher(object):
     def __init__(self, client):
+        self.processes_num = 50
+        self.max_task_size = 3 * self.processes_num
         self.stop = False
         self.client = client
         self.root_path = 'questions'
@@ -21,46 +24,32 @@ class QuestionDispatcher(object):
             with open('questions.json') as f:
                 self.question_set = set(json.load(f))
 
-        self.queue = queue.Queue()
+        self.new_url_queue = queue.Queue()
+        self.task_queue = queue.Queue(maxsize=self.max_task_size)
         self.spider = questions.QuestionSpider(client)
 
     def __del__(self):
         with open(self.questions_path, 'w') as f:
             json.dump(list(self.question_set), f)
 
-    def question_update_loop(self, interval):
+    def task_update_loop(self, interval):
         while not self.stop:
             new_urls = self.spider.get_new_quetion_urls()
             for url in new_urls:
-                self.queue.put(url)
+                print('adding new url')
+                self.question_set.add(url)
+            for url in self.question_set:
+                print('adding task', self.task_queue.qsize())
+                self.task_queue.put(url)
             time.sleep(interval)
 
     def monitor_question_loop(self, interval):
-        i = 0
+        pool = ThreadPool(self.processes_num)
         while not self.stop:
-            start = time.time()
-            i += 1
-            while not self.queue.empty():
-                url = self.queue.get()
-                self.question_set.add(url)
-            print('round %d, question %d' % (i, len(self.question_set)))
-            with open(self.questions_path, 'w') as f:
-                json.dump(list(self.question_set), f)
-
-            questions = list(self.question_set)
-            size = 50
-            for i in range(0, len(questions), size):
-                if not self.stop:
-                    pool = ThreadPool(size)
-                    if i + size < len(questions):
-                        results = pool.map(self.monitor, questions[i: i + size])
-                    else:
-                        results = pool.map(self.monitor, questions[i: -1])
-                    pool.close()
-                    pool.join()
-                    time.sleep(interval)
-            delta_time = time.time() - start
-            print('It costs %s secs to finish.' % (delta_time))
+            url = self.task_queue.get()
+            print('adding new worker')
+            pool.apply_async(self.monitor, args=(url,))
+            time.sleep(interval)
         print('stopped')
 
     def monitor(self, question_url):
@@ -72,11 +61,11 @@ class QuestionDispatcher(object):
 
     def run(self):
         try:
-            update_thread = threading.Thread(target=self.question_update_loop, args=(20,))
-            update_thread.start()
-            monitor_thread = threading.Thread(target=self.monitor_question_loop, args=(5,))
+            task_update_thread = threading.Thread(target=self.task_update_loop, args=(20,))
+            task_update_thread.start()
+            monitor_thread = threading.Thread(target=self.monitor_question_loop, args=(1,))
             monitor_thread.start()
-            update_thread.join()
+            task_update_thread.join()
             monitor_thread.join()
         except KeyboardInterrupt:
             print('cleaning up...')
