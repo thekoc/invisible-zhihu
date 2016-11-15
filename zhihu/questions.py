@@ -17,7 +17,7 @@ class QuestionSpider(object):
             'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36',
         }
         s.headers.update(headers)
-        req = s.get('https://www.zhihu.com/topic/19551424/newest')
+        req = s.get('https://www.zhihu.com/topic/19673476/newest')
         soup = BeautifulSoup(req.text, 'html.parser')
         host = 'https://www.zhihu.com'
         for t in soup.find_all('a', class_='question_link'):
@@ -67,8 +67,8 @@ class QuestionProcesser(object):
 
     def update_answers(self):
         for a in self.question.answers:
-            if not a.suggest_edit.status:
-                print('newfile')
+            # if not a.suggest_edit.status:
+            if True:
                 a = AnswerProcessor(a, self.answer_directory)
                 a.update()
 
@@ -88,6 +88,7 @@ class QuestionProcesser(object):
             try:
                 new_ids = set(self.get_visible_answer_ids())
             except:
+                print('get new answer failed')
                 new_ids = self.visible_answer_ids
             deleted_ids = self.visible_answer_ids.difference(new_ids)
             for i in deleted_ids:
@@ -149,15 +150,17 @@ class AnswerProcessor(object):
 
     def comment_to_tag(self, comment):
         soup = BeautifulSoup('', 'html.parser')
-        comment_tag = soup.new_tag('div', **{'class': 'comment'}, id=str(comment.id))
+
+        comment_tag = soup.new_tag('div', **{'class': 'comment', 'id': str(comment.id)})
+        comment_author = soup.new_tag('div', **{'class': 'comment_author'})
+        comment_author.append(self.people_to_tag(comment.author))
+        comment_tag.append(comment_author)
+
         if comment.reply_to:
             reply = soup.new_tag('div', **{'class': 'reply'})
             reply.string = '回复: '
             reply.append(self.people_to_tag(comment.reply_to))
             comment_tag.append(reply)
-        comment_author = soup.new_tag('div', **{'class': 'comment_author'})
-        comment_author.append(self.people_to_tag(comment.author))
-        comment_tag.append(comment_author)
 
         comment_content = soup.new_tag('div', **{'class': 'comment_content'})
         comment_content.append(BeautifulSoup(comment.content, 'html.parser'))
@@ -188,9 +191,10 @@ class AnswerProcessor(object):
         for c in self.answer.comments:
             comments.append(self.comment_to_tag(c))
         soup.append(comments)
-        return soup.prettify()
+        return str(soup)
 
     def copy_comment_to_delete(self, comment_id):
+        print('new_deleted_comment')
         with open(self.answer_path) as f:
             soup = BeautifulSoup(f.read(), 'html.parser')
 
@@ -207,7 +211,6 @@ class AnswerProcessor(object):
         comment_tags = []
         for c in self.answer.comments:
             if c.id in comment_ids:
-                print('new_comment')
                 comment_tags.append(self.comment_to_tag(c))
 
         with open(self.answer_path) as f:

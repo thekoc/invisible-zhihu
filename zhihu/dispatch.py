@@ -36,15 +36,19 @@ class QuestionDispatcher(object):
             time.sleep(interval)
 
     def monitor_question_loop(self, interval):
+        i = 0
         while not self.stop:
+            start = time.time()
+            i += 1
             while not self.queue.empty():
                 url = self.queue.get()
                 self.question_set.add(url)
+            print('round %d, question %d' % (i, len(self.question_set)))
             with open(self.questions_path, 'w') as f:
                 json.dump(list(self.question_set), f)
 
             questions = list(self.question_set)
-            size = 10
+            size = 50
             for i in range(0, len(questions), size):
                 if not self.stop:
                     pool = ThreadPool(size)
@@ -55,16 +59,20 @@ class QuestionDispatcher(object):
                     pool.close()
                     pool.join()
                     time.sleep(interval)
+            delta_time = time.time() - start
+            print('It costs %s secs to finish.' % (delta_time))
         print('stopped')
 
     def monitor(self, question_url):
         if not self.stop:
-            p = questions.QuestionProcesser(self.client.from_url(question_url))
+            q = self.client.from_url(question_url)
+            p = questions.QuestionProcesser(q)
             p.update()
+        print('question %d: %s finished' % (q.id, q.title))
 
     def run(self):
         try:
-            update_thread = threading.Thread(target=self.question_update_loop, args=(5,))
+            update_thread = threading.Thread(target=self.question_update_loop, args=(20,))
             update_thread.start()
             monitor_thread = threading.Thread(target=self.monitor_question_loop, args=(5,))
             monitor_thread.start()
