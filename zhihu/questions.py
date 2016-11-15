@@ -5,23 +5,27 @@ import json
 import time
 from bs4 import BeautifulSoup
 from tools import qid_to_url
+from zhihu import ZhihuClient as WebClient
 
 class QuestionSpider(object):
-    def __init__(self, client):
-        self.client = client
+    def __init__(self):
+        self.web_client = WebClient()
+        self.cookie_path = 'cookies.json'
+        if os.path.isfile(self.cookie_path):
+            self.web_client.login_with_cookies(self.cookie_path)
+        else:
+            self.web_client.create_cookies(self.cookie_path)
 
     def get_new_quetion_urls(self):
         question_urls = []
-        s = requests.Session()
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36',
-        }
-        s.headers.update(headers)
-        req = s.get('https://www.zhihu.com/topic/19673476/newest')
-        soup = BeautifulSoup(req.text, 'html.parser')
-        host = 'https://www.zhihu.com'
-        for t in soup.find_all('a', class_='question_link'):
-            question_urls.append(host + t['href'])
+        base_url = 'https://www.zhihu.com/question/'
+        i = 0
+        for q in self.web_client.topic('https://www.zhihu.com/topic/19673476/').questions:
+            i += 1
+            if i < 20:
+                question_urls.append(base_url + str(q.id))
+            else:
+                break
         return question_urls
 
 class QuestionProcesser(object):
