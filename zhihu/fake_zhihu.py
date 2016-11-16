@@ -17,7 +17,7 @@ class ZhihuClient(object):
             self.oauth_client.login_in_terminal()
             self.oauth_client.save_token(self.token_path)
 
-        if os.path.isfile(self.token_path):
+        if os.path.isfile(self.cookie_path):
             self.web_client.login_with_cookies(self.cookie_path)
         else:
             self.web_client.create_cookies(self.cookie_path)
