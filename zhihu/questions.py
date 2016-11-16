@@ -10,23 +10,36 @@ from zhihu import ZhihuClient as WebClient
 class QuestionSpider(object):
     def __init__(self):
         self.web_client = WebClient()
-        self.cookie_path = 'cookies.json'
-        if os.path.isfile(self.cookie_path):
-            self.web_client.login_with_cookies(self.cookie_path)
+        self.cookies_path = 'cookies.json'
+        self.cookies = json.load(open(self.cookies_path))
+        if os.path.isfile(self.cookies_path):
+            self.web_client.login_with_cookies(self.cookies_path)
         else:
-            self.web_client.create_cookies(self.cookie_path)
+            self.web_client.create_cookies(self.cookies_path)
 
     def get_new_quetion_urls(self):
         question_urls = []
-        base_url = 'https://www.zhihu.com/question/'
-        i = 0
-        for q in self.web_client.topic('https://www.zhihu.com/topic/19673476/').questions:
-            i += 1
-            if i < 20:
-                question_urls.append(base_url + str(q.id))
-            else:
-                break
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36',
+        }
+        s = requests.Session()
+        req = s.get('https://www.zhihu.com/topic/19673476/newest', headers=headers, cookies=self.cookies)
+        soup = BeautifulSoup(req.text, 'html.parser')
+        host = 'https://www.zhihu.com'
+        for t in soup.find_all('a', class_='question_link'):
+            question_urls.append(host + t['href'])
         return question_urls
+    # def get_new_quetion_urls(self):
+    #     question_urls = []
+    #     base_url = 'https://www.zhihu.com/question/'
+    #     i = 0
+    #     for q in self.web_client.topic('https://www.zhihu.com/topic/19673476/').hot_questions:
+    #         i += 1
+    #         if i < 60:
+    #             question_urls.append(base_url + str(q.id))
+    #         else:
+    #             break
+    #     return question_urls
 
 class QuestionProcesser(object):
     def __init__(self, question):
@@ -58,7 +71,6 @@ class QuestionProcesser(object):
 
     def __del__(self):
         if self.meta_info:
-            print(self.meta_info)
             with open(self.meta_info_path, 'w') as f:
                 json.dump(self.meta_info, f)
 
@@ -96,7 +108,6 @@ class QuestionProcesser(object):
             except:
                 print('get new answer failed')
                 new_ids = self.visible_answer_ids
-            print(new_ids)
             deleted_ids = self.visible_answer_ids.difference(new_ids)
             for i in deleted_ids:
                 self.copy_to_deleted(i)
