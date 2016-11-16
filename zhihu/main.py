@@ -2,7 +2,7 @@ import os
 
 from zhihu_oauth import ZhihuClient
 from questions import QuestionSpider
-from questions import QuestionProcesser
+from questions import QuestionProcessor
 from questions import AnswerProcessor
 from dispatch import QuestionDispatcher
 from fake_zhihu import ZhihuClient as FakeClient
@@ -33,11 +33,23 @@ def main():
 
 def test():
     client = login()
+    # q = client.from_url('https://www.zhihu.com/question/47542623')
+    # p = QuestionProcessor(q)
+    # a = client.from_url('https://www.zhihu.com/question/27182871/answer/35663127')
+    # p = AnswerProcessor(a, 'test')
+
     q = client.from_url('https://www.zhihu.com/question/47542623')
-    qp = QuestionProcesser(q)
+    p = QuestionProcessor(q)
     while True:
-        qp.update()
+        p.update()
         time.sleep(5)
+
+def test1():
+    client = login()
+    q = QuestionSpider(client)
+    while True:
+        print(q.get_new_quetion_urls())
+        time.sleep(30)
 
 if __name__ == '__main__':
     main()

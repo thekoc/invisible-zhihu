@@ -8,7 +8,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 
 class QuestionDispatcher(object):
     def __init__(self, client):
-        self.processes_num = 50
+        self.processes_num = 1
         self.max_task_size = 3 * self.processes_num
         self.stop = False
         self.client = client
@@ -34,7 +34,6 @@ class QuestionDispatcher(object):
         while not self.stop:
             new_urls = self.spider.get_new_quetion_urls()
             for url in new_urls:
-                # print('adding new url')
                 self.question_set.add(url)
             for url in self.question_set:
                 # print('adding task', self.task_queue.qsize())
@@ -47,7 +46,7 @@ class QuestionDispatcher(object):
         pool = ThreadPool(self.processes_num)
         while not self.stop:
             url = self.task_queue.get()
-            # print('adding new worker')
+            print('adding new worker')
             pool.apply_async(self.monitor, args=(url,))
             time.sleep(interval)
         pool.close()
@@ -55,15 +54,16 @@ class QuestionDispatcher(object):
         print('stopped')
 
     def monitor(self, question_url):
+        print('start')
         if not self.stop:
             q = self.client.from_url(question_url)
-            p = questions.QuestionProcesser(q)
+            p = questions.QuestionProcessor(q)
             p.update()
         print('question %d: %s finished' % (q.id, q.title))
 
     def run(self):
         try:
-            task_update_thread = threading.Thread(target=self.task_update_loop, args=(3,))
+            task_update_thread = threading.Thread(target=self.task_update_loop, args=(240,))
             task_update_thread.start()
             monitor_thread = threading.Thread(target=self.monitor_question_loop, args=(1,))
             monitor_thread.start()

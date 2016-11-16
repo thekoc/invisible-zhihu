@@ -41,7 +41,7 @@ class QuestionSpider(object):
     #             break
     #     return question_urls
 
-class QuestionProcesser(object):
+class QuestionProcessor(object):
     def __init__(self, question):
             self.meta_info = None
             self.question = question
