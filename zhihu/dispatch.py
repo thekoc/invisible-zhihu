@@ -85,7 +85,6 @@ class QuestionDispatcher(object):
                 self.question_set.add(url)
             for url in self.question_set:
                 self.process_counter.put(1)
-                print('update')
                 q = self.client.from_url(url)
                 p = process.QuestionProcessor(q)
                 self.update(p)

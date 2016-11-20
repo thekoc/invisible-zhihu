@@ -47,8 +47,6 @@ class QuestionProcessor(object):
         self.title = self.question.title
         self.excerpt = self.question.excerpt
         self.database.insert_question(self.question_id, self.title, self.url, self.excerpt)
-        author = self.question.author
-        self.database.insert_user(author.id, author.name, uid_to_url(author.id))
         for topic in self.question.topics:
             tid = topic.id
             self.database.insert_topic(tid, topic.name, tid_to_url(tid))
@@ -70,7 +68,7 @@ class QuestionProcessor(object):
             return ids
         except Exception as e:
             print(e)
-            return self.meta_info['visible_answer_ids']
+            return self.get_archived_visible_answer_ids()
 
     def get_archived_visible_answer_ids(self):
         return set(self.database.get_visible_answer_ids(self.question_id))
@@ -87,7 +85,8 @@ class QuestionProcessor(object):
                 raise e
             deleted_ids = self.get_archived_visible_answer_ids().difference(new_ids)
             for i in deleted_ids:
-                self.database.mark_answer_deleted(i)
+                print('new deleted answer')
+                self.database.mark_answer_deleted(self.question_id, self.answer_id)
             self.update_answers()
 
 
@@ -117,7 +116,7 @@ class AnswerProcessor(object):
             ids = [c.id for c in self.answer.comments]
             return ids
         except Exception as e:
-            return self.meta_info['visible_comment_ids']
+            return self.get_archived_visible_comment_ids()
 
     def append_added_comments(self, comment_ids):
         for c in self.answer.comments:
@@ -138,5 +137,6 @@ class AnswerProcessor(object):
         deleted_ids = archived_ids.difference(new_ids)
         added_ids = new_ids.difference(archived_ids)
         for i in deleted_ids:
+            print('new deleted comment')
             self.database.mark_comment_deleted(self.question_id, self.answer_id, i)
         self.append_added_comments(added_ids)
