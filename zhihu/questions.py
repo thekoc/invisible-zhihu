@@ -5,7 +5,11 @@ import json
 import time
 from bs4 import BeautifulSoup
 from tools import qid_to_url
+from tools import aid_to_url
+from tools import tid_to_url
 from zhihu import ZhihuClient as WebClient
+from archive import ZhihuDatabase
+
 
 class QuestionSpider(object):
     def __init__(self):
@@ -41,57 +45,28 @@ class QuestionSpider(object):
     #             break
     #     return question_urls
 
+
 class QuestionProcessor(object):
     def __init__(self, question):
-            self.meta_info = None
-            self.question = question
-            self.url = qid_to_url(self.question.id)
-            self.work_directory = str(self.question.id) + '.question'
-            self.answer_directory = os.path.join(self.work_directory, 'answers')
-            self.deleted_answer_directory = os.path.join(self.work_directory, 'deleted')
-            self.meta_info_path = os.path.join(self.work_directory, 'meta_info.json')
-            for d in [self.work_directory, self.answer_directory, self.deleted_answer_directory]:
-                if not os.path.isdir(d):
-                    os.mkdir(d)
-            if not os.path.isfile(self.meta_info_path):
-                self.meta_info = {
-                    'question_info': {
-                        'url': self.url,
-                        'title': self.question.title,
-                        'excerpt': self.question.excerpt
-                    },
-                    'visible_answer_ids': [],
-                }
-                self.meta_info['visible_answer_ids'] = self.get_visible_answer_ids()
-            else:
-                with open(self.meta_info_path) as f:
-                    self.meta_info = json.load(f)
-
-            self.visible_answer_ids = set(self.meta_info['visible_answer_ids'])
-
-    def __del__(self):
-        if self.meta_info:
-            with open(self.meta_info_path, 'w') as f:
-                json.dump(self.meta_info, f)
-
-    def copy_to_deleted(self, answer_id):
-        print('new_deleted_answer', answer_id)
-        path = os.path.join(self.answer_directory, str(answer_id) + '.answer')
-        if not os.path.isdir(path):
-            raise FileNotFoundError(path)
-        else:
-            dst = os.path.join(self.deleted_answer_directory, str(answer_id) + '.answer')
-            if not os.path.isdir(dst):
-                shutil.copytree(path, dst)
-
+        self.database = ZhihuDatabase('zhihu.db')
+        self.meta_info = None
+        self.question = question
+        self.question_id = self.question.id
+        self.url = qid_to_url(self.question.id)
+        self.title = self.question.title
+        self.excerpt = self.question.excerpt
+        self.database.insert_question(self.question_id, self.title, self.url, self.excerpt)
+        for topic in self.question.topics:
+            tid = topic.id
+            self.database.insert_topic(tid, topic.name, tid_to_url(tid))
+            self.database.insert_relationship_topic_question_id(tid, self.question_id)
 
     def update_answers(self):
         for a in self.question.answers:
-            a = AnswerProcessor(a, self.answer_directory)
-            a.update()
+            ap = AnswerProcessor(a)
+            ap.update()
 
-
-    def get_visible_answer_ids(self):
+    def get_current_visible_answer_ids(self):
         try:
             ids = [a.id for a in self.question.answers]
             return ids
@@ -99,66 +74,48 @@ class QuestionProcessor(object):
             print(e)
             return self.meta_info['visible_answer_ids']
 
+    def get_archived_visible_answer_ids(self):
+        return set(self.database.get_visible_answer_ids(self.question_id))
+
     def update(self):
         if False:
-            self.status['deleted'] = True
+            pass
         else:
             try:
-                new_ids = set(self.get_visible_answer_ids())
-            except:
+                new_ids = set(self.get_current_visible_answer_ids())
+            except Exception as e:
                 print('get new answer failed')
-                new_ids = self.visible_answer_ids
-            deleted_ids = self.visible_answer_ids.difference(new_ids)
+                new_ids = self.get_archived_visible_answer_ids()
+                raise e
+            deleted_ids = self.get_archived_visible_answer_ids().difference(new_ids)
             for i in deleted_ids:
-                self.copy_to_deleted(i)
-            self.visible_answer_ids = new_ids
-            self.meta_info['visible_answer_ids'] = list(new_ids)
+                self.database.mark_answer_deleted(i)
             self.update_answers()
-
-    def monitor(self, interval):
-        while True:
-            self.update()
-            time.sleep(interval)
 
 
 class AnswerProcessor(object):
-    def __init__(self, answer, directory):
-        self.meta_info = None
+    def __init__(self, answer):
         self.answer = answer
-        self.work_directory = os.path.join(directory, str(answer.id) + '.answer')
-        self.deleted_comment_directory = os.path.join(self.work_directory, 'deleted_comments')
-        self.answer_path = os.path.join(self.work_directory, 'answer.html')
-        self.meta_info_path = os.path.join(self.work_directory, 'meta_info.json')
+        self.database = ZhihuDatabase('zhihu.db')
+        self.answer_id = self.answer.id
+        self.question_id = self.answer.question.id
+        self.author_id = self.answer.author.id
+        self.url = aid_to_url(self.question_id, self.answer_id)
+        self.excerpt = self.answer.excerpt
+        self.content = self.answer.content
+        self.database.insert_answer(
+            self.answer_id, self.question_id, self.author_id, self.url, self.excerpt, self.content
+        )
 
-        for d in [self.work_directory, self.deleted_comment_directory]:
-            if not os.path.isdir(d):
-                os.makedirs(d)
+    def get_archived_visible_comment_ids(self):
+        ids = self.database.get_visible_comment_ids(self.answer_id)
+        return set(ids)
 
-        if not os.path.isfile(self.meta_info_path):
-            self.meta_info = {
-                'answer_info': {
-                    'excerpt': self.answer.excerpt
-                },
-                'visible_comment_ids': [],
-            }
-            self.meta_info['visible_comment_ids'] = self.get_visible_comment_ids()
-        else:
-            with open(self.meta_info_path) as f:
-                self.meta_info = json.load(f)
-
-        self.visible_comment_ids = set(self.meta_info['visible_comment_ids'])
-
-    def __del__(self):
-        if self.meta_info:
-            with open(self.meta_info_path, 'w') as f:
-                json.dump(self.meta_info, f)
-
-    def get_visible_comment_ids(self):
+    def get_current_visible_comment_ids(self):
         try:
             ids = [c.id for c in self.answer.comments]
             return ids
         except Exception as e:
-            print(e)
             return self.meta_info['visible_comment_ids']
 
     def people_to_tag(self, people):
@@ -225,7 +182,7 @@ class AnswerProcessor(object):
         with open(self.answer_path, 'w') as f:
             f.write(soup.prettify())
 
-    def append_added_comments(self, comment_ids):
+    def append_added_comments_to_html(self, comment_ids):
         comment_tags = []
         for c in self.answer.comments:
             if c.id in comment_ids:
@@ -239,16 +196,20 @@ class AnswerProcessor(object):
         with open(self.answer_path, 'w') as f:
             f.write(soup.prettify())
 
-    def update(self):
-        if not os.path.isfile(self.answer_path):
-            with open(self.answer_path, 'w') as f:
-                f.write(self.html())
+    def append_added_comments(self, comment_ids):
+        for c in self.answer.comments:
+            if c.id in comment_ids:
+                self.database.insert_comment(
+                    c.created_time, c.content,
+                    c.id, self.answer_id, self.author_id, self.question_id
+                )
 
-        new_ids = set(self.get_visible_comment_ids())
-        deleted_ids = self.visible_comment_ids.difference(new_ids)
-        added_ids = new_ids.difference(self.visible_comment_ids)
+    def update(self):
+        print('new answer')
+        new_ids = set(self.get_current_visible_comment_ids())
+        archived_ids = self.get_archived_visible_comment_ids()
+        deleted_ids = archived_ids.difference(new_ids)
+        added_ids = new_ids.difference(archived_ids)
         for i in deleted_ids:
-            self.copy_comment_to_delete(i)
+            self.database.mark_comment_deleted(self.question_id, self.answer_id, i)
         self.append_added_comments(added_ids)
-        self.visible_comment_ids = new_ids
-        self.meta_info['visible_comment_ids'] = list(new_ids)
