@@ -11,9 +11,13 @@ import queue
 import time
 import shutil
 
+data_path = 'data'
+
 
 def login():
-    TOKEN_FILE = 'token.pkl'
+    if not os.path.isdir(data_path):
+        os.makedirs(data_path)
+    TOKEN_FILE = os.path.join(data_path, 'token.pkl')
 
     client = ZhihuClient()
 

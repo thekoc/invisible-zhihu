@@ -2,8 +2,10 @@ from zhihu_oauth import ZhihuClient as OauthClient
 from zhihu import ZhihuClient as WebClient
 import os
 
+
 class ZhihuClient(object):
     """A class that encapsulates true client for purposes of unification interface."""
+
     def __init__(self):
         self.cookie_path = 'cookies.json'
         self.token_path = 'token.pkl'

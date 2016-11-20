@@ -12,6 +12,10 @@ class QuestionDispatcher(object):
         self.processes_max_num = 20
         self.max_task_size = 3 * self.processes_max_num
         self.stop = False
+        data_path = 'data'
+        if not os.path.isdir(data_path):
+            os.makedirs(data_path)
+        os.chdir(data_path)
         self.database = archive.ZhihuDatabase('zhihu.db')
         self.client = client
         self.spider = process.QuestionSpider()
