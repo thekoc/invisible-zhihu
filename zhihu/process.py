@@ -33,23 +33,13 @@ class QuestionSpider(object):
         for t in soup.find_all('a', class_='question_link'):
             question_urls.append(host + t['href'])
         return question_urls
-    # def get_new_question_urls(self):
-    #     question_urls = []
-    #     base_url = 'https://www.zhihu.com/question/'
-    #     i = 0
-    #     for q in self.web_client.topic('https://www.zhihu.com/topic/19673476/').hot_questions:
-    #         i += 1
-    #         if i < 60:
-    #             question_urls.append(base_url + str(q.id))
-    #         else:
-    #             break
-    #     return question_urls
 
 
 class QuestionProcessor(object):
     def __init__(self, question):
+        self.answer_processor_set = set()
         self.database = ZhihuDatabase('zhihu.db')
-        self.meta_info = None
+        self.stop = False
         self.question = question
         self.question_id = self.question.id
         self.url = qid_to_url(self.question.id)
@@ -63,8 +53,13 @@ class QuestionProcessor(object):
 
     def update_answers(self):
         for a in self.question.answers:
-            ap = AnswerProcessor(a)
-            ap.update()
+            if not self.stop:
+                ap = AnswerProcessor(a)
+                self.answer_processor_set.add(ap)
+                try:
+                    ap.update()
+                finally:
+                    self.answer_processor_set.remove(ap)
 
     def get_current_visible_answer_ids(self):
         try:
@@ -95,6 +90,7 @@ class QuestionProcessor(object):
 
 class AnswerProcessor(object):
     def __init__(self, answer):
+        self.stop = False
         self.answer = answer
         self.database = ZhihuDatabase('zhihu.db')
         self.answer_id = self.answer.id
@@ -118,94 +114,16 @@ class AnswerProcessor(object):
         except Exception as e:
             return self.meta_info['visible_comment_ids']
 
-    def people_to_tag(self, people):
-        people_tag = BeautifulSoup('', 'html.parser').new_tag('a', href='https://www.zhihu.com/people/' + str(people.id))
-        people_tag.string = people.name
-        return people_tag
-
-    def comment_to_tag(self, comment):
-        soup = BeautifulSoup('', 'html.parser')
-
-        comment_tag = soup.new_tag('div', **{'class': 'comment', 'id': str(comment.id)})
-        comment_author = soup.new_tag('div', **{'class': 'comment_author'})
-        comment_author.append(self.people_to_tag(comment.author))
-        comment_tag.append(comment_author)
-
-        if comment.reply_to:
-            reply = soup.new_tag('div', **{'class': 'reply'})
-            reply.string = '回复: '
-            reply.append(self.people_to_tag(comment.reply_to))
-            comment_tag.append(reply)
-
-        comment_content = soup.new_tag('div', **{'class': 'comment_content'})
-        comment_content.append(BeautifulSoup(comment.content, 'html.parser'))
-        comment_tag.append(comment_content)
-        return comment_tag
-
-    def html(self):
-        soup = BeautifulSoup('', 'html.parser')
-        title = soup.new_tag('div', **{'class': 'title'})
-        title.string = '问题: '
-        title_url = soup.new_tag('a', href=qid_to_url(self.answer.question.id))
-        title_url.string = self.answer.question.title
-        title.append(title_url)
-        soup.append(title)
-
-        author = soup.new_tag('div', **{'class': 'author'})
-        author.string = '作者: '
-        author.append(self.people_to_tag(self.answer.author))
-        soup.append(author)
-
-        content = soup.new_tag('div', **{'class': 'content'})
-        content.string = '答案: '
-        content.append(BeautifulSoup(self.answer.content, 'html.parser'))
-        soup.append(content)
-
-        comments = soup.new_tag('div', **{'class': 'comments'})
-        comments.string = '评论: '
-        for c in self.answer.comments:
-            comments.append(self.comment_to_tag(c))
-        soup.append(comments)
-        return str(soup)
-
-    def copy_comment_to_delete(self, comment_id):
-        print('new_deleted_comment')
-        with open(self.answer_path) as f:
-            soup = BeautifulSoup(f.read(), 'html.parser')
-
-        comment = soup.find('div', class_='comment', id=str(comment_id))
-        content = comment.find('div', class_='comment_content')
-        content.string.wrap(soup.new_tag('del'))
-        path = os.path.join(self.deleted_comment_directory, str(comment_id) + '.html')
-        with open(path, 'w') as f:
-            f.write(comment.prettify())
-        with open(self.answer_path, 'w') as f:
-            f.write(soup.prettify())
-
-    def append_added_comments_to_html(self, comment_ids):
-        comment_tags = []
-        for c in self.answer.comments:
-            if c.id in comment_ids:
-                comment_tags.append(self.comment_to_tag(c))
-
-        with open(self.answer_path) as f:
-            soup = BeautifulSoup(f.read(), 'html.parser')
-        comments = soup.find('div', class_='comments')
-        for t in comment_tags:
-            comments.append(t)
-        with open(self.answer_path, 'w') as f:
-            f.write(soup.prettify())
-
     def append_added_comments(self, comment_ids):
         for c in self.answer.comments:
-            if c.id in comment_ids:
-                self.database.insert_comment(
-                    c.created_time, c.content,
-                    c.id, self.answer_id, self.author_id, self.question_id
-                )
+            if not self.stop:
+                if c.id in comment_ids:
+                    self.database.insert_comment(
+                        c.created_time, c.content,
+                        c.id, self.answer_id, self.author_id, self.question_id
+                    )
 
     def update(self):
-        print('new answer')
         new_ids = set(self.get_current_visible_comment_ids())
         archived_ids = self.get_archived_visible_comment_ids()
         deleted_ids = archived_ids.difference(new_ids)

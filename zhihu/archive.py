@@ -8,7 +8,7 @@ class ZhihuDatabase(object):
     """
 
     def __init__(self, dbname):
-        self.connect = sqlite3.connect(dbname)
+        self.connect = sqlite3.connect(dbname, check_same_thread=False)
         self.cursor = cursor = self.connect.cursor()
         cursor.execute(
             """
@@ -167,7 +167,7 @@ class ZhihuDatabase(object):
             SELECT URL FROM QUESTION
             """
         )
-        return urls
+        return [u[0] for u in urls]
 
     def mark_answer_deleted(self, question_id, answer_id):
         self.cursor.execute(
