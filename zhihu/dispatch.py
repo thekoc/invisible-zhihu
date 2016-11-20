@@ -45,17 +45,25 @@ class QuestionDispatcher(object):
             p = process.QuestionProcessor(q)
             p.update()
         self.process_in_pool.get()
-        print('question %d: %s finished' % (q.id, q.title))
+        print('question {qid}: {title} finished'.format(qid=q.id, title=q.title))
+
+    def run_single(self):
+        while True:
+            urls = self.spider.get_new_question_urls()
+            for url in urls:
+                self.question_set.add(url)
+            for url in self.question_set:
+                self.update(url)
+            time.sleep(1)
 
     def run(self):
         try:
             task_update_thread = threading.Thread(target=self.task_update_loop, args=(240,))
             task_update_thread.start()
-            # monitor_thread = threading.Thread(target=self.monitor_question_loop, args=(1,))
+            monitor_thread = threading.Thread(target=self.monitor_question_loop, args=(1,))
             # monitor_thread.start()
-            self.monitor_question_loop(1)
             task_update_thread.join()
-            # monitor_thread.join()
+            monitor_thread.join()
         except KeyboardInterrupt:
             print('cleaning up...')
             self.stop = True
