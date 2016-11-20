@@ -1,9 +1,9 @@
 import os
 
 from zhihu_oauth import ZhihuClient
-from questions import QuestionSpider
-from questions import QuestionProcessor
-from questions import AnswerProcessor
+from process import QuestionSpider
+from process import QuestionProcessor
+from process import AnswerProcessor
 from dispatch import QuestionDispatcher
 from fake_zhihu import ZhihuClient as FakeClient
 import requests
@@ -31,6 +31,7 @@ def main():
     t = QuestionDispatcher(client)
     t.run()
 
+
 def test():
     client = login()
     # q = client.from_url('https://www.zhihu.com/question/47542623')
@@ -38,18 +39,30 @@ def test():
     # a = client.from_url('https://www.zhihu.com/question/27182871/answer/35663127')
     # p = AnswerProcessor(a, 'test')
 
-    q = client.from_url('https://www.zhihu.com/question/47542623')
-    p = QuestionProcessor(q)
-    while True:
-        p.update()
-        time.sleep(5)
+    q = client.from_url('https://www.zhihu.com/question/36391193')
+    # p = QuestionProcessor(q)
+    print(q.status)
+    for a in q.answers:
+        print(a.id)
+
 
 def test1():
-    client = login()
-    q = QuestionSpider(client)
-    while True:
-        print(q.get_new_quetion_urls())
-        time.sleep(30)
+    def inf():
+        i = 0
+        while True:
+            i += 1
+            yield i
+    import sqlite3
+    conn = sqlite3.connect('fuck.db')
+    coursor = conn.cursor()
+    coursor.execute('create table if not exists user (id int, name text, age int,  primary key(id, age))')
+    for i in [1, 4, 2, 3, 5]:
+        coursor.execute('insert or replace into user (id, name, age) values (:id, :name, :age)', {'id': i, 'name': 'shit\'', 'age': None})
+    # print(coursor.execute("""select * from user""").fetchall())
+    # coursor.execute('insert into user (id, name) values (\'aa\', \'bb\')')
+    coursor.close()
+    conn.commit()
+    conn.close()
 
 if __name__ == '__main__':
     main()

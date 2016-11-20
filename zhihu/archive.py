@@ -161,6 +161,14 @@ class ZhihuDatabase(object):
         ).fetchall()
         return [i[0] for i in ids]
 
+    def get_question_urls(self):
+        urls = self.cursor.execute(
+            """
+            SELECT URL FROM QUESTION
+            """
+        )
+        return urls
+
     def mark_answer_deleted(self, question_id, answer_id):
         self.cursor.execute(
             """

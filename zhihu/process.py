@@ -21,7 +21,7 @@ class QuestionSpider(object):
         else:
             self.web_client.create_cookies(self.cookies_path)
 
-    def get_new_quetion_urls(self):
+    def get_new_question_urls(self):
         question_urls = []
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36',
@@ -33,7 +33,7 @@ class QuestionSpider(object):
         for t in soup.find_all('a', class_='question_link'):
             question_urls.append(host + t['href'])
         return question_urls
-    # def get_new_quetion_urls(self):
+    # def get_new_question_urls(self):
     #     question_urls = []
     #     base_url = 'https://www.zhihu.com/question/'
     #     i = 0
