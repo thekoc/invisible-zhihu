@@ -8,8 +8,8 @@ from multiprocessing.dummy import Pool as ThreadPool
 
 class QuestionDispatcher(object):
     def __init__(self, client):
-        self.processes_num = 1
-        self.max_task_size = 3 * self.processes_num
+        self.processes_max_num = 20
+        self.max_task_size = 3 * self.processes_max_num
         self.stop = False
         self.client = client
         self.spider = questions.QuestionSpider()
@@ -23,8 +23,8 @@ class QuestionDispatcher(object):
             with open('questions.json') as f:
                 self.question_set = set(json.load(f))
 
-        self.new_url_queue = queue.Queue()
         self.task_queue = queue.Queue(maxsize=self.max_task_size)
+        self.process_in_pool = queue.Queue(maxsize=self.processes_max_num)
 
     def __del__(self):
         with open(self.questions_path, 'w') as f:
@@ -36,29 +36,28 @@ class QuestionDispatcher(object):
             for url in new_urls:
                 self.question_set.add(url)
             for url in self.question_set:
-                # print('adding task', self.task_queue.qsize())
                 self.task_queue.put(url)
             with open('questions.json', 'w') as f:
                 json.dump(list(self.question_set), f)
             time.sleep(interval)
 
     def monitor_question_loop(self, interval):
-        pool = ThreadPool(self.processes_num)
+        pool = ThreadPool(self.processes_max_num)
         while not self.stop:
             url = self.task_queue.get()
-            print('adding new worker')
-            pool.apply_async(self.monitor, args=(url,))
+            thread = pool.apply_async(self.monitor, args=(url,))
+            self.process_in_pool.put(thread)
             time.sleep(interval)
         pool.close()
         pool.join()
         print('stopped')
 
     def monitor(self, question_url):
-        print('start')
         if not self.stop:
             q = self.client.from_url(question_url)
             p = questions.QuestionProcessor(q)
             p.update()
+        self.process_in_pool.get()
         print('question %d: %s finished' % (q.id, q.title))
 
     def run(self):
