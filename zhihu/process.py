@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from tools import qid_to_url
 from tools import aid_to_url
 from tools import tid_to_url
+from tools import uid_to_url
 from zhihu import ZhihuClient as WebClient
 from archive import ZhihuDatabase
 
@@ -46,6 +47,8 @@ class QuestionProcessor(object):
         self.title = self.question.title
         self.excerpt = self.question.excerpt
         self.database.insert_question(self.question_id, self.title, self.url, self.excerpt)
+        author = self.question.author
+        self.database.insert_user(author.id, author.name, uid_to_url(author.id))
         for topic in self.question.topics:
             tid = topic.id
             self.database.insert_topic(tid, topic.name, tid_to_url(tid))
@@ -102,6 +105,8 @@ class AnswerProcessor(object):
         self.database.insert_answer(
             self.answer_id, self.question_id, self.author_id, self.url, self.excerpt, self.content
         )
+        author = self.answer.author
+        self.database.insert_user(author.id, author.name, uid_to_url(author.id))
 
     def get_archived_visible_comment_ids(self):
         ids = self.database.get_visible_comment_ids(self.answer_id)
@@ -120,8 +125,12 @@ class AnswerProcessor(object):
                 if c.id in comment_ids:
                     self.database.insert_comment(
                         c.created_time, c.content,
-                        c.id, self.answer_id, self.author_id, self.question_id
+                        c.id, self.answer_id, self.author_id, self.question_id,
+                        reply_to_id=c.reply_to.id if c.reply_to else None
                     )
+                    author = c.author
+                    if self.database.get_user(author.id) is None:
+                        self.database.insert_user(author.id, author.name, uid_to_url(author.id))
 
     def update(self):
         new_ids = set(self.get_current_visible_comment_ids())

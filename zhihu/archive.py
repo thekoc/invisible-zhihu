@@ -3,8 +3,9 @@ import tools
 
 
 class ZhihuDatabase(object):
-    """
-    A database use sqlite.
+    """A database use sqlite.
+
+    Placeholder
     """
 
     def __init__(self, dbname):
@@ -81,6 +82,17 @@ class ZhihuDatabase(object):
             {'tid': topic_id, 'name': name, 'url': url}
         )
         self.connect.commit()
+
+    def insert_user(self, user_id, name, url):
+        cursor = self.cursor
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO USER
+            (ID, NAME, URL)
+            VALUES (:uid, :name, :url)
+            """,
+            {'uid': user_id, 'name': name, 'url': url}
+        )
 
     def insert_question(self, question_id, title, url, excerpt, deleted=False):
         cursor = self.cursor
@@ -168,6 +180,104 @@ class ZhihuDatabase(object):
             """
         )
         return [u[0] for u in urls]
+
+    def get_user(self, user_id, default=None):
+        """Get a user row in the USER table.
+
+        Args:
+            user_id (int): The id of the user.
+            default (object, optional): Return this value if not found.
+                Defaults to None.
+
+        Returns:
+            tuple: If found, the return value will be like: (ID, NAME, URL)
+            None: If the default argument was not given.
+        """
+        results = self.cursor.execute(
+            """
+            SELECT * FROM USER WHERE ID = :uid
+            """,
+            {'uid': user_id}
+        ).fetchall()
+        return results[0] if results else default
+
+    def get_comment(self, question_id, answer_id, comment_id, default=None):
+        """Get a comment row in the COMMENT table.
+
+        Returns:
+            tuple: If found, the return value will be like:
+                (ID, ANSWER_ID, QUESTION_ID, AUTHOR_ID, REPLY_TO_AUTHOR_ID,
+                CONTENT, CREATED_TIME, DELETED)
+            None: If the default argument was not given.
+        """
+        results = self.cursor.execute(
+            """
+            SELECT * FROM COMMENT
+            WHERE ID = :cid AND QUESTION_ID = :qid AND ANSWER_ID = :aid
+            """,
+            {'cid': comment_id, 'aid': answer_id, 'qid': question_id}
+        ).fetchall()
+        if results:
+            result = results[0]
+            return result[:-1] + (True if result[-1] == 1 else False,)
+        else:
+            return default
+
+    def get_comments(self, question_id, answer_id, default=None):
+        """Get comments under the answer.
+
+        Returns:
+            A list that contains tuple like folloing:
+                (ID, ANSWER_ID, QUESTION_ID, AUTHOR_ID, REPLY_TO_AUTHOR_ID,
+                CONTENT, CREATED_TIME, DELETED)
+        """
+        results = self.cursor.execute(
+            """
+            SELECT * FROM COMMENT
+            WHERE QUESTION_ID = :qid AND ANSWER_ID = :aid
+            """,
+            {'aid': answer_id, 'qid': question_id}
+        ).fetchall()
+        return results if default is None else default
+
+    def get_answer(self, question_id, answer_id, default=None):
+        """Get an answer row in the ANSWER table.
+
+        Returns:
+            tuple: If found, looks like:
+                (ID, QUESTION_ID, AUTHOR_ID, URL, EXCERPT, CONTENT, DELETED)
+        """
+        results = self.cursor.execute(
+            """
+            SELECT * FROM ANSWER
+            WHERE ID = :aid AND QUESTION_ID = :qid
+            """,
+            {'aid': answer_id, 'qid': question_id}
+        ).fetchall()
+        if results:
+            result = results[0]
+            return result[:-1] + (True if result[-1] == 1 else False,)
+        else:
+            return default
+
+    def get_question(self, question_id, default=None):
+        """Get a question row in the QUESTION table.
+
+        Returns:
+            tuple: If found, looks line:
+                (ID, TITLE, URL, EXCERPT, DELETED)
+        """
+        results = self.cursor.execute(
+            """
+            SELECT * FROM QUESTION WHERE ID = :qid
+            """,
+            {'qid': question_id}
+        ).fetchall()
+        if results:
+            result = results[0]
+            return result[:-1] + (True if result[-1] == 1 else False,)
+        else:
+            return default
 
     def mark_answer_deleted(self, question_id, answer_id):
         self.cursor.execute(
