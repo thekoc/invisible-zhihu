@@ -93,6 +93,7 @@ class ZhihuDatabase(object):
             """,
             {'uid': user_id, 'name': name, 'url': url}
         )
+        self.connect.commit()
 
     def insert_question(self, question_id, title, url, excerpt, deleted=False):
         cursor = self.cursor

@@ -86,7 +86,7 @@ class QuestionProcessor(object):
             deleted_ids = self.get_archived_visible_answer_ids().difference(new_ids)
             for i in deleted_ids:
                 print('new deleted answer')
-                self.database.mark_answer_deleted(self.question_id, self.answer_id)
+                self.database.mark_answer_deleted(self.question_id, i)
             self.update_answers()
 
 
