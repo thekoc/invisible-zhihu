@@ -9,8 +9,8 @@ class ZhihuDatabase(object):
     """
 
     def __init__(self, dbname):
-        self.connect = sqlite3.connect(dbname, check_same_thread=False)
-        self.cursor = cursor = self.connect.cursor()
+        self._connect = sqlite3.connect(dbname, check_same_thread=False)
+        self._cursor = cursor = self._connect.cursor()
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS USER
@@ -67,12 +67,12 @@ class ZhihuDatabase(object):
 
     def __del__(self):
         """Save data on close."""
-        self.cursor.close()
-        self.connect.commit()
-        self.connect.close()
+        self._cursor.close()
+        self._connect.commit()
+        self._connect.close()
 
     def insert_topic(self, topic_id, name, url):
-        cursor = self.cursor
+        cursor = self._cursor
         cursor.execute(
             """
             INSERT OR IGNORE INTO TOPIC
@@ -81,10 +81,10 @@ class ZhihuDatabase(object):
             """,
             {'tid': topic_id, 'name': name, 'url': url}
         )
-        self.connect.commit()
+        self._connect.commit()
 
     def insert_user(self, user_id, name, url):
-        cursor = self.cursor
+        cursor = self._cursor
         cursor.execute(
             """
             INSERT OR IGNORE INTO USER
@@ -93,10 +93,10 @@ class ZhihuDatabase(object):
             """,
             {'uid': user_id, 'name': name, 'url': url}
         )
-        self.connect.commit()
+        self._connect.commit()
 
     def insert_question(self, question_id, title, url, excerpt, deleted=False):
-        cursor = self.cursor
+        cursor = self._cursor
         cursor.execute(
             """
             INSERT OR IGNORE INTO QUESTION
@@ -108,10 +108,10 @@ class ZhihuDatabase(object):
                 'excerpt': excerpt, 'deleted': 1 if deleted else 0
             }
         )
-        self.connect.commit()
+        self._connect.commit()
 
     def insert_answer(self, answer_id, question_id, author_id, url, excerpt, content, deleted=False):
-        self.cursor.execute(
+        self._cursor.execute(
             """
             INSERT OR IGNORE INTO ANSWER
             (ID, QUESTION_ID, AUTHOR_ID, URL, EXCERPT, CONTENT, DELETED)
@@ -122,13 +122,13 @@ class ZhihuDatabase(object):
                 'url': url, 'excerpt': excerpt, 'content': content, 'deleted': 1 if deleted else 0
             }
         )
-        self.connect.commit()
+        self._connect.commit()
 
     def insert_comment(
             self, created_time, content,
             comment_id, answer_id, author_id, question_id, reply_to_id=None,
             deleted=False):
-        cursor = self.cursor
+        cursor = self._cursor
         cursor.execute(
             """
             INSERT OR IGNORE INTO COMMENT
@@ -143,10 +143,10 @@ class ZhihuDatabase(object):
                 'deleted': 1 if deleted else 0
             }
         )
-        self.connect.commit()
+        self._connect.commit()
 
     def insert_relationship_topic_question_id(self, topic_id, question_id):
-        self.cursor.execute(
+        self._cursor.execute(
             """
             INSERT OR IGNORE INTO RELATIONSHIP_TOPIC_QUESTION_ID
             (TOPIC_ID, QUESTION_ID)
@@ -154,10 +154,10 @@ class ZhihuDatabase(object):
             """,
             {'tid': topic_id, 'qid': question_id}
         )
-        self.connect.commit()
+        self._connect.commit()
 
     def get_visible_answer_ids(self, question_id):
-        ids = self.cursor.execute(
+        ids = self._cursor.execute(
             """
             SELECT ID FROM ANSWER WHERE QUESTION_ID = :question_id AND DELETED = 0
             """,
@@ -166,7 +166,7 @@ class ZhihuDatabase(object):
         return [i[0] for i in ids]
 
     def get_visible_comment_ids(self, answer_id):
-        ids = self.cursor.execute(
+        ids = self._cursor.execute(
             """
             SELECT ID FROM COMMENT WHERE ANSWER_ID = :answer_id AND DELETED = 0
             """,
@@ -175,7 +175,7 @@ class ZhihuDatabase(object):
         return [i[0] for i in ids]
 
     def get_question_urls(self):
-        urls = self.cursor.execute(
+        urls = self._cursor.execute(
             """
             SELECT URL FROM QUESTION
             """
@@ -194,7 +194,7 @@ class ZhihuDatabase(object):
             tuple: If found, the return value will be like: (ID, NAME, URL)
             None: If the default argument was not given.
         """
-        results = self.cursor.execute(
+        results = self._cursor.execute(
             """
             SELECT * FROM USER WHERE ID = :uid
             """,
@@ -211,7 +211,7 @@ class ZhihuDatabase(object):
                 CONTENT, CREATED_TIME, DELETED)
             None: If the default argument was not given.
         """
-        results = self.cursor.execute(
+        results = self._cursor.execute(
             """
             SELECT * FROM COMMENT
             WHERE ID = :cid AND QUESTION_ID = :qid AND ANSWER_ID = :aid
@@ -232,7 +232,7 @@ class ZhihuDatabase(object):
                 (ID, ANSWER_ID, QUESTION_ID, AUTHOR_ID, REPLY_TO_AUTHOR_ID,
                 CONTENT, CREATED_TIME, DELETED)
         """
-        results = self.cursor.execute(
+        results = self._cursor.execute(
             """
             SELECT * FROM COMMENT
             WHERE QUESTION_ID = :qid AND ANSWER_ID = :aid
@@ -248,7 +248,7 @@ class ZhihuDatabase(object):
             tuple: If found, looks like:
                 (ID, QUESTION_ID, AUTHOR_ID, URL, EXCERPT, CONTENT, DELETED)
         """
-        results = self.cursor.execute(
+        results = self._cursor.execute(
             """
             SELECT * FROM ANSWER
             WHERE ID = :aid AND QUESTION_ID = :qid
@@ -268,7 +268,7 @@ class ZhihuDatabase(object):
             tuple: If found, looks line:
                 (ID, TITLE, URL, EXCERPT, DELETED)
         """
-        results = self.cursor.execute(
+        results = self._cursor.execute(
             """
             SELECT * FROM QUESTION WHERE ID = :qid
             """,
@@ -281,17 +281,17 @@ class ZhihuDatabase(object):
             return default
 
     def mark_answer_deleted(self, question_id, answer_id):
-        self.cursor.execute(
+        self._cursor.execute(
             """
             UPDATE ANSWER SET DELETED = 1
             WHERE ID = :answer_id AND QUESTION_ID = :question_id
             """,
             {'question_id': question_id, 'answer_id': answer_id}
         )
-        self.connect.commit()
+        self._connect.commit()
 
     def mark_comment_deleted(self, question_id, answer_id, comment_id):
-        self.cursor.execute(
+        self._cursor.execute(
             """
             UPDATE COMMENT SET DELETED = 1
             WHERE ID = :comment_id AND QUESTION_ID = :question_id AND ANSWER_ID = :answer_id
@@ -301,7 +301,7 @@ class ZhihuDatabase(object):
                 'comment_id': comment_id
             }
         )
-        self.connect.commit()
+        self._connect.commit()
 
     def update_answer_content(self, answer_id, content):
         pass
