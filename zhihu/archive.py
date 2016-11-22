@@ -37,7 +37,8 @@ class ZhihuDatabase(object):
             """
             CREATE TABLE IF NOT EXISTS ANSWER
             (ID INT, QUESTION_ID INT, AUTHOR_ID INT,
-            URL TEXT, EXCERPT TEXT, CONTENT TEXT, DELETED INT,
+            URL TEXT, EXCERPT TEXT, CONTENT TEXT, VOTEUP_COUNT INT, THANKS_COUNT INT,
+            CREATED_TIME INT, UPDATED_TIME INT, ADDED_TIME INT, DELETED INT,
             FOREIGN KEY(QUESTION_ID) REFERENCES QUESTION(ID) ON DELETE CASCADE,
             FOREIGN KEY(AUTHOR_ID) REFERENCES USER(ID) ON DELETE CASCADE,
             PRIMARY KEY (QUESTION_ID, ID))
@@ -49,7 +50,7 @@ class ZhihuDatabase(object):
             CREATE TABLE IF NOT EXISTS COMMENT
             (ID INT, ANSWER_ID INT, QUESTION_ID INT,
             AUTHOR_ID INT,REPLY_TO_AUTHOR_ID INT,
-            CONTENT TEXT, CREATED_TIME INT, DELETED INT,
+            CONTENT TEXT, CREATED_TIME INT, ADDED_TIME INT, DELETED INT,
             FOREIGN KEY(ANSWER_ID) REFERENCES ANSWER(ID) ON DELETE CASCADE,
             FOREIGN KEY(AUTHOR_ID) REFERENCES USER(ID) ON DELETE CASCADE,
             FOREIGN KEY(REPLY_TO_AUTHOR_ID) REFERENCES USER(ID) ON DELETE CASCADE,
@@ -110,16 +111,30 @@ class ZhihuDatabase(object):
         )
         self._connect.commit()
 
-    def insert_answer(self, answer_id, question_id, author_id, url, excerpt, content, deleted=False):
+    def insert_answer(
+            self, answer_id, question_id, author_id,
+            url, excerpt, content, voteup_count, thanks_count,
+            created_time, updated_time, added_time, deleted=False):
         self._cursor.execute(
             """
             INSERT OR IGNORE INTO ANSWER
-            (ID, QUESTION_ID, AUTHOR_ID, URL, EXCERPT, CONTENT, DELETED)
-            VALUES (:answer_id, :question_id, :author_id, :url, :excerpt, :content, :deleted)
+            (ID, QUESTION_ID, AUTHOR_ID,
+            URL, EXCERPT, CONTENT, VOTEUP_COUNT, THANKS_COUNT,
+            CREATED_TIME, UPDATED_TIME, ADDED_TIME, DELETED)
+            VALUES (:answer_id, :question_id, :author_id,
+                    :url, :excerpt, :content, :voteup_count, :thanks_count,
+                    :created_time, :updated_time, :added_time, :deleted)
             """,
             {
-                'answer_id': answer_id, 'question_id': question_id, 'author_id': author_id,
-                'url': url, 'excerpt': excerpt, 'content': content, 'deleted': 1 if deleted else 0
+                'answer_id': answer_id,
+                'question_id': question_id,
+                'author_id': author_id,
+                'url': url, 'excerpt': excerpt, 'content': content,
+                'voteup_count': voteup_count, 'thanks_count': thanks_count,
+                'created_time': created_time,
+                'updated_time': updated_time,
+                'added_time': added_time,
+                'deleted': 1 if deleted else 0
             }
         )
         self._connect.commit()
@@ -246,7 +261,9 @@ class ZhihuDatabase(object):
 
         Returns:
             tuple: If found, looks like:
-                (ID, QUESTION_ID, AUTHOR_ID, URL, EXCERPT, CONTENT, DELETED)
+                (ID, QUESTION_ID, AUTHOR_ID,
+                URL, EXCERPT, CONTENT, VOTEUP_COUNT, THANKS_COUNT,
+                CREATED_TIME, UPDATED_TIME, ADDED_TIME, DELETED)
         """
         results = self._cursor.execute(
             """

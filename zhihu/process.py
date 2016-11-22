@@ -25,8 +25,8 @@ class QuestionProcessor(object):
 
     def update_answers(self):
         for a in self.question.answers:
+            ap = AnswerProcessor(a)
             if not self.stop:
-                ap = AnswerProcessor(a)
                 self.answer_processor_set.add(ap)
                 try:
                     ap.update()
@@ -72,9 +72,15 @@ class AnswerProcessor(object):
         self.url = aid_to_url(self.question_id, self.answer_id)
         self.excerpt = self.answer.excerpt
         self.content = self.answer.content
+        self.voteup_count = self.answer.voteup_count
+        self.thanks_count = self.answer.thanks_count
+        self.created_time = self.answer.created_time
+        self.updated_time = self.answer.updated_time
         self.database.insert_answer(
-            self.answer_id, self.question_id, self.author_id, self.url, self.excerpt, self.content
-        )
+            self.answer_id, self.question_id, self.author_id,
+            self.url, self.excerpt, self.content,
+            self.voteup_count, self.thanks_count,
+            self.created_time, self.updated_time, int(time.time()))
         author = self.answer.author
         self.database.insert_user(author.id, author.name, uid_to_url(author.id))
 
