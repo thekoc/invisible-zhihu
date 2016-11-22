@@ -93,9 +93,11 @@ class AnswerProcessor(object):
         for c in self.answer.comments:
             if not self.stop:
                 if c.id in comment_ids:
+                    comment_author = c.author
+                    comment_author_id = comment_author.id
                     self.database.insert_comment(
                         c.created_time, c.content,
-                        c.id, self.answer_id, self.author_id, self.question_id,
+                        c.id, self.answer_id, comment_author_id, self.question_id,
                         reply_to_id=c.reply_to.id if c.reply_to else None
                     )
                     author = c.author
