@@ -24,7 +24,7 @@ class _safe_set(set):
 class QuestionDispatcher(object):
 
     def __init__(self, client):
-        self.processes_max_num = 50
+        self.processes_max_num = 100
         self.max_task_size = 3 * self.processes_max_num
         self.stop = False
         data_path = 'data'
@@ -47,19 +47,24 @@ class QuestionDispatcher(object):
             for url in new_urls:
                 self.question_set.add(url)
             for url in self.question_set:
-                self.task_queue.put(url)
+                if not self.stop:
+                    self.task_queue.put(url)
             while time.time() - start_time < interval and not self.stop:
                 time.sleep(0.1)
+        print('task_update_loop stopped')
 
     def monitor_question_loop(self, interval):
-        pool = ThreadPool(self.processes_max_num)
+        pool = ThreadPool(self.processes_max_num + 1)
+
         while not self.stop:
             start_time = time.time()
-            if len(self.processor_set) <= self.processes_max_num:
+            if len(self.processor_set) < self.processes_max_num:
                 url = self.task_queue.get()
                 pool.apply_async(self.handle_question, args=(url,))
             while time.time() - start_time < interval and not self.stop:
                 time.sleep(0.1)
+        while not self.task_queue.empty():
+            self.task_queue.get()
         pool.close()
         pool.join()
         print('stopped')
@@ -72,6 +77,7 @@ class QuestionDispatcher(object):
             p.update()
             if self.stop:
                 print('question {qid}: {title} aborted'.format(qid=q.id, title=q.title))
+                print(len(self.processor_set), 'left')
             else:
                 print('question {qid}: {title} finished'.format(qid=q.id, title=q.title))
         finally:
