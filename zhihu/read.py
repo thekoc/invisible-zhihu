@@ -45,7 +45,6 @@ class ZhihuReader():
     def answer_to_tag(self, question_id, answer_id):
         soup = BeautifulSoup('', 'html.parser')
         info = self.database.get_answer(question_id, answer_id)
-        print(info)
         if info:
             *args, answer_author_id, answer_url, answer_excerpt, answer_content, voteup_count, thanks_count, created_time, updated_time, added_time, suggest_edit, answer_deleted = info
             qinfo = self.database.get_question(question_id)
@@ -73,7 +72,6 @@ class ZhihuReader():
             comments = soup.new_tag('div', **{'class': 'comments'})
             comments.string = '评论: '
             for c in self.database.get_comments(question_id, answer_id):
-                print(c)
                 cid, *args = c
                 comments.append(self.comment_to_tag(question_id, answer_id, cid))
             soup.append(comments)
