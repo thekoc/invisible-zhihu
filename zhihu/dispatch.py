@@ -1,4 +1,5 @@
 import process
+import produce
 import queue
 import os
 import time
@@ -33,7 +34,7 @@ class QuestionDispatcher(object):
         os.chdir(data_path)
         self.database = archive.ZhihuDatabase('zhihu.db')
         self.client = client
-        self.spider = process.QuestionSpider()
+        self.spider = produce.QuestionSpider()
         self.question_set = set(self.database.get_question_urls())
 
         self.task_queue = queue.Queue(maxsize=self.max_task_size)

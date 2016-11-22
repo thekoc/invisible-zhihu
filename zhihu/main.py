@@ -2,6 +2,7 @@ import os
 
 from zhihu_oauth import ZhihuClient
 from process import QuestionSpider
+from produce import QuestionSpider
 from process import QuestionProcessor
 from process import AnswerProcessor
 from dispatch import QuestionDispatcher
