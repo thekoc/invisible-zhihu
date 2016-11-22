@@ -38,7 +38,8 @@ class ZhihuDatabase(object):
             CREATE TABLE IF NOT EXISTS ANSWER
             (ID INT, QUESTION_ID INT, AUTHOR_ID INT,
             URL TEXT, EXCERPT TEXT, CONTENT TEXT, VOTEUP_COUNT INT, THANKS_COUNT INT,
-            CREATED_TIME INT, UPDATED_TIME INT, ADDED_TIME INT, DELETED INT,
+            CREATED_TIME INT, UPDATED_TIME INT, ADDED_TIME INT,
+            SUGGEST_EDIT INT, DELETED INT,
             FOREIGN KEY(QUESTION_ID) REFERENCES QUESTION(ID) ON DELETE CASCADE,
             FOREIGN KEY(AUTHOR_ID) REFERENCES USER(ID) ON DELETE CASCADE,
             PRIMARY KEY (QUESTION_ID, ID))
@@ -49,7 +50,7 @@ class ZhihuDatabase(object):
             """
             CREATE TABLE IF NOT EXISTS COMMENT
             (ID INT, ANSWER_ID INT, QUESTION_ID INT,
-            AUTHOR_ID INT,REPLY_TO_AUTHOR_ID INT,
+            AUTHOR_ID INT, REPLY_TO_AUTHOR_ID INT,
             CONTENT TEXT, CREATED_TIME INT, ADDED_TIME INT, DELETED INT,
             FOREIGN KEY(ANSWER_ID) REFERENCES ANSWER(ID) ON DELETE CASCADE,
             FOREIGN KEY(AUTHOR_ID) REFERENCES USER(ID) ON DELETE CASCADE,
@@ -114,16 +115,17 @@ class ZhihuDatabase(object):
     def insert_answer(
             self, answer_id, question_id, author_id,
             url, excerpt, content, voteup_count, thanks_count,
-            created_time, updated_time, added_time, deleted=False):
+            created_time, updated_time, added_time, suggest_edit, deleted=False):
         self._cursor.execute(
             """
             INSERT OR IGNORE INTO ANSWER
             (ID, QUESTION_ID, AUTHOR_ID,
             URL, EXCERPT, CONTENT, VOTEUP_COUNT, THANKS_COUNT,
-            CREATED_TIME, UPDATED_TIME, ADDED_TIME, DELETED)
+            CREATED_TIME, UPDATED_TIME, ADDED_TIME, SUGGEST_EDIT, DELETED)
             VALUES (:answer_id, :question_id, :author_id,
                     :url, :excerpt, :content, :voteup_count, :thanks_count,
-                    :created_time, :updated_time, :added_time, :deleted)
+                    :created_time, :updated_time, :added_time,
+                    :suggest_edit, :deleted)
             """,
             {
                 'answer_id': answer_id,
@@ -134,13 +136,14 @@ class ZhihuDatabase(object):
                 'created_time': created_time,
                 'updated_time': updated_time,
                 'added_time': added_time,
+                'suggest_edit': 1 if suggest_edit else 0,
                 'deleted': 1 if deleted else 0
             }
         )
         self._connect.commit()
 
     def insert_comment(
-            self, created_time, content,
+            self, created_time, added_time, content,
             comment_id, answer_id, author_id, question_id, reply_to_id=None,
             deleted=False):
         cursor = self._cursor
@@ -148,13 +151,14 @@ class ZhihuDatabase(object):
             """
             INSERT OR IGNORE INTO COMMENT
             (ID, ANSWER_ID, QUESTION_ID, AUTHOR_ID, REPLY_TO_AUTHOR_ID,
-            CONTENT, CREATED_TIME, DELETED)
-            VALUES (:cid, :answer_id, :qid, :author_id, :reply, :content, :c_time, :deleted)
+            CONTENT, CREATED_TIME, ADDED_TIME, DELETED)
+            VALUES (:cid, :answer_id, :qid, :author_id,
+                    :reply, :content, :c_time, :added_time, :deleted)
             """,
             {
                 'cid': comment_id, 'answer_id': answer_id, 'qid': question_id,
                 'author_id': author_id, 'reply': reply_to_id,
-                'content': content, 'c_time': created_time,
+                'content': content, 'c_time': created_time, 'added_time': added_time,
                 'deleted': 1 if deleted else 0
             }
         )
@@ -223,7 +227,7 @@ class ZhihuDatabase(object):
         Returns:
             tuple: If found, the return value will be like:
                 (ID, ANSWER_ID, QUESTION_ID, AUTHOR_ID, REPLY_TO_AUTHOR_ID,
-                CONTENT, CREATED_TIME, DELETED)
+                CONTENT, CREATED_TIME, ADDED_TIME, DELETED)
             None: If the default argument was not given.
         """
         results = self._cursor.execute(
@@ -245,7 +249,7 @@ class ZhihuDatabase(object):
         Returns:
             A list that contains tuple like folloing:
                 (ID, ANSWER_ID, QUESTION_ID, AUTHOR_ID, REPLY_TO_AUTHOR_ID,
-                CONTENT, CREATED_TIME, DELETED)
+                CONTENT, CREATED_TIME, ADDED_TIME, DELETED)
         """
         results = self._cursor.execute(
             """
@@ -263,7 +267,8 @@ class ZhihuDatabase(object):
             tuple: If found, looks like:
                 (ID, QUESTION_ID, AUTHOR_ID,
                 URL, EXCERPT, CONTENT, VOTEUP_COUNT, THANKS_COUNT,
-                CREATED_TIME, UPDATED_TIME, ADDED_TIME, DELETED)
+                CREATED_TIME, UPDATED_TIME, ADDED_TIME,
+                SUGGEST_EDIT, DELETED)
         """
         results = self._cursor.execute(
             """
@@ -273,8 +278,8 @@ class ZhihuDatabase(object):
             {'aid': answer_id, 'qid': question_id}
         ).fetchall()
         if results:
-            result = results[0]
-            return result[:-1] + (True if result[-1] == 1 else False,)
+            result = list(results[0])
+            return result[:-2] + [True if i == 1 else False for i in result[-2:]]
         else:
             return default
 

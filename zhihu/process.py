@@ -76,11 +76,13 @@ class AnswerProcessor(object):
         self.thanks_count = self.answer.thanks_count
         self.created_time = self.answer.created_time
         self.updated_time = self.answer.updated_time
+        self.suggest_edit = self.answer.suggest_edit.status
         self.database.insert_answer(
             self.answer_id, self.question_id, self.author_id,
             self.url, self.excerpt, self.content,
             self.voteup_count, self.thanks_count,
-            self.created_time, self.updated_time, int(time.time()))
+            self.created_time, self.updated_time, int(time.time()),
+            self.suggest_edit)
         author = self.answer.author
         self.database.insert_user(author.id, author.name, uid_to_url(author.id))
 
@@ -102,7 +104,7 @@ class AnswerProcessor(object):
                     comment_author = c.author
                     comment_author_id = comment_author.id
                     self.database.insert_comment(
-                        c.created_time, c.content,
+                        c.created_time, int(time.time()), c.content,
                         c.id, self.answer_id, comment_author_id, self.question_id,
                         reply_to_id=c.reply_to.id if c.reply_to else None
                     )
