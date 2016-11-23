@@ -42,7 +42,7 @@ class ZhihuDatabase(object):
             SUGGEST_EDIT INT, DELETED INT,
             FOREIGN KEY(QUESTION_ID) REFERENCES QUESTION(ID) ON DELETE CASCADE,
             FOREIGN KEY(AUTHOR_ID) REFERENCES USER(ID) ON DELETE CASCADE,
-            PRIMARY KEY (QUESTION_ID, ID))
+            PRIMARY KEY (QUESTION_ID, ID, UPDATED_TIME))
             """
         )
 
@@ -260,11 +260,34 @@ class ZhihuDatabase(object):
         ).fetchall()
         return results if default is None else default
 
-    def get_answer(self, question_id, answer_id, default=None):
+    def get_answer(self, question_id, answer_id, default=None, updated_time=None):
         """Get an answer row in the ANSWER table.
+
+        Args:
+            question_id (int), answer_id (int), default (int, optional)
+            updated_time (int): If not given, it will return the newest answer.
 
         Returns:
             tuple: If found, looks like:
+                (ID, QUESTION_ID, AUTHOR_ID,
+                URL, EXCERPT, CONTENT, VOTEUP_COUNT, THANKS_COUNT,
+                CREATED_TIME, UPDATED_TIME, ADDED_TIME,
+                SUGGEST_EDIT, DELETED)
+        """
+        results = self.get_answer_history(question_id, answer_id)
+        if updated_time:
+            results = [i for i in results if i[-3] == updated_time]
+        if results:
+            result = list(results[0])
+            return result[:-2] + [True if i == 1 else False for i in result[-2:]]
+        else:
+            return default
+
+    def get_answer_history(self, question_id, answer_id):
+        """Get a list that contain all the version of this answer.
+
+        Returns:
+            list(tuple): Each tuple will be like:
                 (ID, QUESTION_ID, AUTHOR_ID,
                 URL, EXCERPT, CONTENT, VOTEUP_COUNT, THANKS_COUNT,
                 CREATED_TIME, UPDATED_TIME, ADDED_TIME,
@@ -274,14 +297,11 @@ class ZhihuDatabase(object):
             """
             SELECT * FROM ANSWER
             WHERE ID = :aid AND QUESTION_ID = :qid
+            ORDER BY UPDATED_TIME DESC
             """,
             {'aid': answer_id, 'qid': question_id}
         ).fetchall()
-        if results:
-            result = list(results[0])
-            return result[:-2] + [True if i == 1 else False for i in result[-2:]]
-        else:
-            return default
+        return results
 
     def get_question(self, question_id, default=None):
         """Get a question row in the QUESTION table.

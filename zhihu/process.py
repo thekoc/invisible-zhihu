@@ -70,21 +70,38 @@ class AnswerProcessor(object):
         self.question_id = self.answer.question.id
         self.author_id = self.answer.author.id
         self.url = aid_to_url(self.question_id, self.answer_id)
-        self.excerpt = self.answer.excerpt
-        self.content = self.answer.content
         self.voteup_count = self.answer.voteup_count
         self.thanks_count = self.answer.thanks_count
         self.created_time = self.answer.created_time
         self.updated_time = self.answer.updated_time
         self.suggest_edit = self.answer.suggest_edit.status
+        if self.should_insert():
+            self.insert()
+        author = self.answer.author
+        self.database.insert_user(author.id, author.name, uid_to_url(author.id))
+
+    @property
+    def content(self):
+        return self.answer.content
+
+    @property
+    def excerpt(self):
+        return self.answer.excerpt
+
+    def insert(self):
         self.database.insert_answer(
             self.answer_id, self.question_id, self.author_id,
             self.url, self.excerpt, self.content,
             self.voteup_count, self.thanks_count,
             self.created_time, self.updated_time, int(time.time()),
             self.suggest_edit)
-        author = self.answer.author
-        self.database.insert_user(author.id, author.name, uid_to_url(author.id))
+
+    def should_insert(self):
+        db = self.database
+        if db.get_answer(self.question_id, self.answer_id, updated_time=self.updated_time):
+            return False
+        else:
+            return True
 
     def get_archived_visible_comment_ids(self):
         ids = self.database.get_visible_comment_ids(self.answer_id)
