@@ -15,15 +15,22 @@ class QuestionSpider(object):
         else:
             self.web_client.create_cookies(self.cookies_path)
 
-    def get_new_question_urls(self):
+    def get_newest_topic_question_urls(self, topic_id):
         question_urls = []
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36',
         }
         s = requests.Session()
-        req = s.get('https://www.zhihu.com/topic/19673476/newest', headers=headers, cookies=self.cookies)
+        req = s.get('https://www.zhihu.com/topic/{topic_id}/newest'.format(topic_id=topic_id), headers=headers, cookies=self.cookies)
         soup = BeautifulSoup(req.text, 'html.parser')
         host = 'https://www.zhihu.com'
         for t in soup.find_all('a', class_='question_link'):
             question_urls.append(host + t['href'])
         return question_urls
+
+    def get_new_question_urls(self):
+        topic_ids = [19551424]
+        urls = []
+        for i in topic_ids:
+            urls += self.get_newest_topic_question_urls(i)
+        return urls

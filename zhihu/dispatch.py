@@ -24,8 +24,8 @@ class _safe_set(set):
 
 class QuestionDispatcher(object):
 
-    def __init__(self, client):
-        self.processes_max_num = 100
+    def __init__(self, client, process_num=100):
+        self.processes_max_num = process_num
         self.max_task_size = 3 * self.processes_max_num
         self.stop = False
         data_path = 'data'
@@ -59,9 +59,8 @@ class QuestionDispatcher(object):
 
         while not self.stop:
             start_time = time.time()
-            if len(self.processor_set) < self.processes_max_num:
-                url = self.task_queue.get()
-                pool.apply_async(self.handle_question, args=(url,))
+            if not self.task_queue.full():
+                pool.apply_async(self.handle_question)
             while time.time() - start_time < interval and not self.stop:
                 time.sleep(0.1)
         while not self.task_queue.empty():
@@ -70,7 +69,8 @@ class QuestionDispatcher(object):
         pool.join()
         print('stopped')
 
-    def handle_question(self, url):
+    def handle_question(self):
+        url = self.task_queue.get()
         q = self.client.from_url(url)
         p = process.QuestionProcessor(q)
         self.processor_set.add(p)
@@ -90,8 +90,9 @@ class QuestionDispatcher(object):
             for url in urls:
                 print(url)
                 self.question_set.add(url)
+                self.task_queue.put(url)
             for url in self.question_set:
-                self.handle_question(url)
+                self.handle_question()
             time.sleep(1)
 
     def run(self):
