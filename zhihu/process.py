@@ -28,14 +28,15 @@ class QuestionProcessor(object):
 
     def update_answers(self):
         for a in self.question.answers:
-            if not self.stop:
-                ap = AnswerProcessor(a)
-                self.answer_processor_set.add(ap)
-                try:
-                    log.debug('updating answer %d in question %d', a.id, self.question_id)
-                    ap.update()
-                finally:
-                    self.answer_processor_set.remove(ap)
+            if self.stop:
+                break
+            ap = AnswerProcessor(a)
+            self.answer_processor_set.add(ap)
+            try:
+                log.debug('updating answer %d in question %d', a.id, self.question_id)
+                ap.update()
+            finally:
+                self.answer_processor_set.remove(ap)
 
     def get_current_visible_answer_ids(self):
         try:
@@ -121,19 +122,20 @@ class AnswerProcessor(object):
 
     def append_added_comments(self, comment_ids):
         for c in self.answer.comments:
-            if not self.stop:
-                if c.id in comment_ids:
-                    comment_author = c.author
-                    comment_author_id = comment_author.id
-                    log.debug('inserting comment %d in answer %d in question %d', c.id, self.answer_id, self.question_id)
-                    self.database.insert_comment(
-                        c.created_time, int(time.time()), c.content,
-                        c.id, self.answer_id, comment_author_id, self.question_id,
-                        reply_to_id=c.reply_to.id if c.reply_to else None
-                    )
-                    author = c.author
-                    if self.database.get_user(author.id) is None:
-                        self.database.insert_user(author.id, author.name, uid_to_url(author.id))
+            if self.stop:
+                break
+            if c.id in comment_ids:
+                comment_author = c.author
+                comment_author_id = comment_author.id
+                log.debug('inserting comment %d in answer %d in question %d', c.id, self.answer_id, self.question_id)
+                self.database.insert_comment(
+                    c.created_time, int(time.time()), c.content,
+                    c.id, self.answer_id, comment_author_id, self.question_id,
+                    reply_to_id=c.reply_to.id if c.reply_to else None
+                )
+                author = c.author
+                if self.database.get_user(author.id) is None:
+                    self.database.insert_user(author.id, author.name, uid_to_url(author.id))
 
     def update(self):
         new_ids = set(self.get_current_visible_comment_ids())

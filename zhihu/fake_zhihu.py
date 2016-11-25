@@ -27,4 +27,4 @@ class ZhihuClient(object):
     def test(self):
         question = self.web_client.topic('https://www.zhihu.com/topic/20059699')
         for answer in question.answers:
-           answer.save()
+            answer.save()

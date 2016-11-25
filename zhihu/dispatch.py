@@ -62,7 +62,7 @@ class QuestionDispatcher(object):
 
         while not self.stop:
             start_time = time.time()
-            if not self.task_queue.full():
+            if not self.task_queue.full() and not self.stop:
                 pool.apply_async(self.handle_question)
             while time.time() - start_time < interval and not self.stop:
                 time.sleep(0.1)
