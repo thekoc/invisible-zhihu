@@ -1,5 +1,6 @@
 import sqlite3
 import tools
+import logging
 
 
 class ZhihuDatabase(object):
@@ -116,6 +117,7 @@ class ZhihuDatabase(object):
             self, answer_id, question_id, author_id,
             url, excerpt, content, voteup_count, thanks_count,
             created_time, updated_time, added_time, suggest_edit, deleted=False):
+        logging.debug('inserting anwer, question id is {} answer id id {}'.format(question_id, answer_id))
         self._cursor.execute(
             """
             INSERT OR IGNORE INTO ANSWER
@@ -146,6 +148,7 @@ class ZhihuDatabase(object):
             self, created_time, added_time, content,
             comment_id, answer_id, author_id, question_id, reply_to_id=None,
             deleted=False):
+        logging.debug('inserting answer, question id is {} answer id id {}'.format(question_id, answer_id))
         cursor = self._cursor
         cursor.execute(
             """

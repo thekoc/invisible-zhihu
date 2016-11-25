@@ -1,7 +1,6 @@
 import os
 
 from zhihu_oauth import ZhihuClient
-from process import QuestionSpider
 from produce import QuestionSpider
 from process import QuestionProcessor
 from process import AnswerProcessor
@@ -11,8 +10,11 @@ import requests
 import queue
 import time
 import shutil
+import logging
+import logging.config
 
 data_path = 'data'
+logging.config.fileConfig(os.path.join(data_path, 'log.ini'))
 
 
 def login():
@@ -44,11 +46,13 @@ def test():
     # a = client.from_url('https://www.zhihu.com/question/27182871/answer/35663127')
     # p = AnswerProcessor(a, 'test')
 
-    q = client.from_url('https://www.zhihu.com/question/36391193')
+    q = client.from_url('https://www.zhihu.com/question/48759787')
     # p = QuestionProcessor(q)
     print(q.status)
     for a in q.answers:
-        print(a.id)
+        author = a.author
+        print(author.id, 'id')
+        print(author.name, 'name')
 
 
 def test1():
@@ -70,4 +74,5 @@ def test1():
     conn.close()
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG, filename='tem.log')
     main()

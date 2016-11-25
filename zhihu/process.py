@@ -1,10 +1,13 @@
 import shutil
 import time
+import logging
 from tools import qid_to_url
 from tools import aid_to_url
 from tools import tid_to_url
 from tools import uid_to_url
 from archive import ZhihuDatabase
+
+log = logging.getLogger(__name__)
 
 
 class QuestionProcessor(object):
@@ -25,10 +28,11 @@ class QuestionProcessor(object):
 
     def update_answers(self):
         for a in self.question.answers:
-            ap = AnswerProcessor(a)
             if not self.stop:
+                ap = AnswerProcessor(a)
                 self.answer_processor_set.add(ap)
                 try:
+                    log.debug('updating answer %d in question %d', a.id, self.question_id)
                     ap.update()
                 finally:
                     self.answer_processor_set.remove(ap)
@@ -38,7 +42,7 @@ class QuestionProcessor(object):
             ids = [a.id for a in self.question.answers]
             return ids
         except Exception as e:
-            print(e)
+            log.error(e)
             return self.get_archived_visible_answer_ids()
 
     def get_archived_visible_answer_ids(self):
@@ -51,12 +55,12 @@ class QuestionProcessor(object):
             try:
                 new_ids = set(self.get_current_visible_answer_ids())
             except Exception as e:
-                print('get new answer failed')
+                log.error('get new answer failed')
                 new_ids = self.get_archived_visible_answer_ids()
                 raise e
             deleted_ids = self.get_archived_visible_answer_ids().difference(new_ids)
             for i in deleted_ids:
-                print('new deleted answer')
+                log.info('new deleted answer')
                 self.database.mark_answer_deleted(self.question_id, i)
             self.update_answers()
 
@@ -89,6 +93,7 @@ class AnswerProcessor(object):
         return self.answer.excerpt
 
     def insert(self):
+        log.debug('inserting answer %d in question %d', self.answer_id, self.question_id)
         self.database.insert_answer(
             self.answer_id, self.question_id, self.author_id,
             self.url, self.excerpt, self.content,
@@ -120,6 +125,7 @@ class AnswerProcessor(object):
                 if c.id in comment_ids:
                     comment_author = c.author
                     comment_author_id = comment_author.id
+                    log.debug('inserting comment %d in answer %d in question %d', c.id, self.answer_id, self.question_id)
                     self.database.insert_comment(
                         c.created_time, int(time.time()), c.content,
                         c.id, self.answer_id, comment_author_id, self.question_id,
@@ -135,6 +141,6 @@ class AnswerProcessor(object):
         deleted_ids = archived_ids.difference(new_ids)
         added_ids = new_ids.difference(archived_ids)
         for i in deleted_ids:
-            print('new deleted comment')
+            log.info('new deleted comment')
             self.database.mark_comment_deleted(self.question_id, self.answer_id, i)
         self.append_added_comments(added_ids)

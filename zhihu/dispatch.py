@@ -5,7 +5,10 @@ import os
 import time
 import threading
 import archive
+import logging
 from multiprocessing.dummy import Pool as ThreadPool
+
+log = logging.getLogger(__name__)
 
 
 class _safe_set(set):
@@ -52,7 +55,7 @@ class QuestionDispatcher(object):
                     self.task_queue.put(url)
             while time.time() - start_time < interval and not self.stop:
                 time.sleep(0.1)
-        print('task_update_loop stopped')
+        log.debug('task_update_loop stopped')
 
     def monitor_question_loop(self, interval):
         pool = ThreadPool(self.processes_max_num + 1)
@@ -67,28 +70,31 @@ class QuestionDispatcher(object):
             self.task_queue.get()
         pool.close()
         pool.join()
-        print('stopped')
+        log.debug('monitor_question_loop stopped')
 
     def handle_question(self):
         url = self.task_queue.get()
         q = self.client.from_url(url)
-        p = process.QuestionProcessor(q)
-        self.processor_set.add(p)
-        try:
-            p.update()
-            if self.stop:
-                print('question {qid}: {title} aborted'.format(qid=q.id, title=q.title))
-                print(len(self.processor_set), 'left')
-            else:
-                print('question {qid}: {title} finished'.format(qid=q.id, title=q.title))
-        finally:
-            self.processor_set.remove(p)
+        if self.stop:
+            log.info('question {qid}: {title} aborted'.format(qid=q.id, title=q.title))
+            log.info(len(self.processor_set), 'left')
+        else:
+
+            p = process.QuestionProcessor(q)
+            self.processor_set.add(p)
+            try:
+                p.update()
+                log.info('question {qid}: {title} finished'.format(qid=q.id, title=q.title))
+            except:
+                log.debug('except in handle_question')
+            finally:
+                self.processor_set.remove(p)
 
     def run_single(self):
         while True:
             urls = self.spider.get_new_question_urls()
             for url in urls:
-                print(url)
+                log.debug(url)
                 self.question_set.add(url)
                 self.task_queue.put(url)
             for url in self.question_set:
@@ -104,7 +110,7 @@ class QuestionDispatcher(object):
             task_update_thread.join()
             monitor_thread.join()
         except KeyboardInterrupt:
-            print('cleaning up...')
+            log.info('cleaning up...')
             self.stop = True
             for qp in self.processor_set:
                 qp.stop = True
