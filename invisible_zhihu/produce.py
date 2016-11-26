@@ -34,3 +34,22 @@ class QuestionSpider(object):
         for i in topic_ids:
             urls += self.get_newest_topic_question_urls(i)
         return urls
+
+
+class QuestionProducer(object):
+    def __init__(self, database, client):
+        self.database = database
+        self.client = client
+        self.spider = QuestionSpider()
+        self.gen = self.question_generator()
+
+    def question_generator(self):
+        while True:
+            archived_urls = self.database.get_question_urls()
+            new_urls = self.spider.get_new_question_urls()
+            url_set = set(archived_urls + new_urls)
+            for url in url_set:
+                yield url
+
+    def get_question_url(self):
+        return next(self.gen)

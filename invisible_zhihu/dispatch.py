@@ -37,49 +37,36 @@ class QuestionDispatcher(object):
         os.chdir(data_path)
         self.database = archive.ZhihuDatabase('zhihu.db')
         self.client = client
-        self.spider = produce.QuestionSpider()
+        self.producer = produce.QuestionProducer(self.database, self.client)
         self.question_set = set(self.database.get_question_urls())
 
-        self.task_queue = queue.Queue(maxsize=self.max_task_size)
-        self.process_counter = queue.Queue(maxsize=self.processes_max_num)
         self.processor_set = _safe_set()
 
-    def task_update_loop(self, interval):
-        while not self.stop:
-            start_time = time.time()
-            new_urls = self.spider.get_new_question_urls()
-            for url in new_urls:
-                self.question_set.add(url)
-            for url in self.question_set:
-                if not self.stop:
-                    self.task_queue.put(url)
-            while time.time() - start_time < interval and not self.stop:
-                time.sleep(0.1)
-        log.debug('task_update_loop stopped')
+    @property
+    def process_count(self):
+        return len(self.processor_set)
 
     def monitor_question_loop(self, interval):
         pool = ThreadPool(self.processes_max_num + 1)
 
         while not self.stop:
             start_time = time.time()
-            if not self.task_queue.full() and not self.stop:
-                pool.apply_async(self.handle_question)
+            if self.process_count < self.processes_max_num and not self.stop:
+                url = self.producer.get_question_url()
+                log.debug('new url %s', url)
+                pool.apply_async(self.handle_question, args=(url,))
             while time.time() - start_time < interval and not self.stop:
                 time.sleep(0.1)
-        while not self.task_queue.empty():
-            self.task_queue.get()
         pool.close()
         pool.join()
         log.debug('monitor_question_loop stopped')
 
-    def handle_question(self):
-        url = self.task_queue.get()
+    def handle_question(self, url):
         q = self.client.from_url(url)
         if self.stop:
             log.info('question {qid}: {title} aborted'.format(qid=q.id, title=q.title))
             log.info(len(self.processor_set), 'left')
         else:
-
             p = process.QuestionProcessor(q)
             self.processor_set.add(p)
             try:
@@ -92,22 +79,14 @@ class QuestionDispatcher(object):
 
     def run_single(self):
         while True:
-            urls = self.spider.get_new_question_urls()
-            for url in urls:
-                log.debug(url)
-                self.question_set.add(url)
-                self.task_queue.put(url)
             for url in self.question_set:
-                self.handle_question()
+                self.handle_question(self.producer.get_question_url())
             time.sleep(1)
 
     def run(self):
         try:
-            task_update_thread = threading.Thread(target=self.task_update_loop, args=(240,))
-            task_update_thread.start()
             monitor_thread = threading.Thread(target=self.monitor_question_loop, args=(1,))
             monitor_thread.start()
-            task_update_thread.join()
             monitor_thread.join()
         except KeyboardInterrupt:
             log.info('cleaning up...')
