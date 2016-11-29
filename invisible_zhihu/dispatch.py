@@ -52,7 +52,7 @@ class QuestionDispatcher(object):
         while not self.stop:
             start_time = time.time()
             if self.process_count < self.processes_max_num and not self.stop:
-                url = self.producer.get_question_url()
+                url = self.producer.next_question_url()
                 log.debug('new url %s', url)
                 pool.apply_async(self.handle_question, args=(url,))
             while time.time() - start_time < interval and not self.stop:
@@ -80,7 +80,7 @@ class QuestionDispatcher(object):
     def run_single(self):
         while True:
             for url in self.question_set:
-                self.handle_question(self.producer.get_question_url())
+                self.handle_question(self.producer.next_question_url())
             time.sleep(1)
 
     def run(self):

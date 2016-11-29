@@ -51,5 +51,5 @@ class QuestionProducer(object):
             for url in url_set:
                 yield url
 
-    def get_question_url(self):
+    def next_question_url(self):
         return next(self.gen)
