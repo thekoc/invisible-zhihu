@@ -1,13 +1,11 @@
 import shutil
 import time
 import logging
-from tools import qid_to_url
-from tools import aid_to_url
-from tools import tid_to_url
-from tools import uid_to_url
-from archive import ZhihuDatabase
+from .tools import qid_to_url, aid_to_url, tid_to_url, uid_to_url
+from .archive import ZhihuDatabase
 
 log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 class QuestionProcessor(object):

@@ -3,7 +3,7 @@ import json
 import os
 from zhihu import ZhihuClient as WebClient
 from bs4 import BeautifulSoup
-from tools import url_to_qid
+from .tools import url_to_qid
 
 
 class QuestionSpider(object):

@@ -1,11 +1,11 @@
 import os
 
 from zhihu_oauth import ZhihuClient
-from produce import QuestionSpider
-from process import QuestionProcessor
-from process import AnswerProcessor
-from dispatch import QuestionDispatcher
-from fake_zhihu import ZhihuClient as FakeClient
+from invisible_zhihu.produce import QuestionSpider
+from invisible_zhihu.process import QuestionProcessor
+from invisible_zhihu.process import AnswerProcessor
+from invisible_zhihu.dispatch import QuestionDispatcher
+from invisible_zhihu.fake_zhihu import ZhihuClient as FakeClient
 import requests
 import queue
 import time
@@ -46,13 +46,19 @@ def test():
     # a = client.from_url('https://www.zhihu.com/question/27182871/answer/35663127')
     # p = AnswerProcessor(a, 'test')
 
-    q = client.from_url('https://www.zhihu.com/question/48759787')
+    # q = client.from_url('https://www.zhihu.com/question/48759787')
     # p = QuestionProcessor(q)
-    print(q.status)
-    for a in q.answers:
-        author = a.author
-        print(author.id, 'id')
-        print(author.name, 'name')
+    # print(q.status)
+    # for a in q.answers:
+    #     author = a.author
+    #     print(author.id, 'id')
+    #     print(author.name, 'name')
+    a = client.from_url('https://www.zhihu.com/question/414411')
+    print(a.id)
+    try:
+        print(a.title)
+    except requests.exceptions.RetryError as e:
+        print(vars(e.request))
 
 
 def test1():
@@ -74,5 +80,4 @@ def test1():
     conn.close()
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, filename='tem.log')
     main()

@@ -1,14 +1,16 @@
-import process
-import produce
 import queue
 import os
 import time
 import threading
-import archive
 import logging
 from multiprocessing.dummy import Pool as ThreadPool
 
+from .archive import ZhihuDatabase
+from .process import QuestionProcessor
+from .produce import QuestionProducer
+
 log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 class _safe_set(set):
@@ -35,9 +37,9 @@ class QuestionDispatcher(object):
         if not os.path.isdir(data_path):
             os.makedirs(data_path)
         os.chdir(data_path)
-        self.database = archive.ZhihuDatabase('zhihu.db')
+        self.database = ZhihuDatabase('zhihu.db')
         self.client = client
-        self.producer = produce.QuestionProducer(self.database, self.client)
+        self.producer = QuestionProducer(self.database, self.client)
         self.question_set = set(self.database.get_question_urls())
 
         self.processor_set = _safe_set()
@@ -67,7 +69,7 @@ class QuestionDispatcher(object):
             log.info('question {qid}: {title} aborted'.format(qid=q.id, title=q.title))
             log.info(len(self.processor_set), 'left')
         else:
-            p = process.QuestionProcessor(q)
+            p = QuestionProcessor(q)
             self.processor_set.add(p)
             try:
                 p.update()
