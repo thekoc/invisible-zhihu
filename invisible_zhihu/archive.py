@@ -15,7 +15,7 @@ class ZhihuDatabase(object):
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS USER
-            (ID INT PRIMARY KEY, NAME TEXT, URL TEXT)
+            (ID TEXT PRIMARY KEY, NAME TEXT, URL TEXT)
             """
         )
 
@@ -37,7 +37,7 @@ class ZhihuDatabase(object):
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS ANSWER
-            (ID INT, QUESTION_ID INT, AUTHOR_ID INT,
+            (ID INT, QUESTION_ID INT, AUTHOR_ID TEXT,
             URL TEXT, EXCERPT TEXT, CONTENT TEXT, VOTEUP_COUNT INT, THANKS_COUNT INT,
             CREATED_TIME INT, UPDATED_TIME INT, ADDED_TIME INT,
             SUGGEST_EDIT INT, DELETED INT,
@@ -51,7 +51,7 @@ class ZhihuDatabase(object):
             """
             CREATE TABLE IF NOT EXISTS COMMENT
             (ID INT, ANSWER_ID INT, QUESTION_ID INT,
-            AUTHOR_ID INT, REPLY_TO_AUTHOR_ID INT,
+            AUTHOR_ID TEXT, REPLY_TO_AUTHOR_ID TEXT,
             CONTENT TEXT, CREATED_TIME INT, ADDED_TIME INT, DELETED INT,
             FOREIGN KEY(ANSWER_ID) REFERENCES ANSWER(ID) ON DELETE CASCADE,
             FOREIGN KEY(AUTHOR_ID) REFERENCES USER(ID) ON DELETE CASCADE,
