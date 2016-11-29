@@ -3,6 +3,7 @@ import json
 import os
 from zhihu import ZhihuClient as WebClient
 from bs4 import BeautifulSoup
+from tools import url_to_qid
 
 
 class QuestionSpider(object):
@@ -41,6 +42,7 @@ class QuestionProducer(object):
         self.database = database
         self.client = client
         self.spider = QuestionSpider()
+        self.valid_urls = set()
         self.gen = self.question_generator()
 
     def question_generator(self):
