@@ -1,10 +1,13 @@
 import requests
 import json
 import os
+import logging
 from zhihu import ZhihuClient as WebClient
 from bs4 import BeautifulSoup
 from .tools import url_to_qid
 
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 class QuestionSpider(object):
     def __init__(self):
