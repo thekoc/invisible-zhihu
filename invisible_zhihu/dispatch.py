@@ -65,15 +65,16 @@ class QuestionDispatcher(object):
 
     def handle_question(self, url):
         q = self.client.from_url(url)
-        if self.stop:
-            log.info('question {qid}: {title} aborted'.format(qid=q.id, title=q.title))
-            log.info(len(self.processor_set), 'left')
-        else:
+        if not self.stop:
             p = QuestionProcessor(q)
             self.processor_set.add(p)
             try:
                 p.update()
-                log.info('question {qid}: {title} finished'.format(qid=q.id, title=q.title))
+                if self.stop:
+                    log.info('question {qid}: {title} aborted'.format(qid=q.id, title=q.title))
+                    log.info(str(len(self.processor_set)) + 'left')
+                else:
+                    log.info('question {qid}: {title} finished'.format(qid=q.id, title=q.title))
             except:
                 log.debug('except in handle_question')
             finally:
@@ -87,9 +88,7 @@ class QuestionDispatcher(object):
 
     def run(self):
         try:
-            monitor_thread = threading.Thread(target=self.monitor_question_loop, args=(1,))
-            monitor_thread.start()
-            monitor_thread.join()
+            self.monitor_question_loop(0.5)
         except KeyboardInterrupt:
             log.info('cleaning up...')
             self.stop = True
