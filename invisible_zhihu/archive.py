@@ -268,7 +268,7 @@ class ZhihuDatabase(object):
 
         Args:
             question_id (int), answer_id (int), default (int, optional)
-            updated_time (int): If not given, it will return the newest answer.
+            updated_time (int, optional): If not given, it will return the newest answer.
 
         Returns:
             tuple: If found, looks like:
