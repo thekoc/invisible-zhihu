@@ -47,6 +47,9 @@ class QuestionProcessor(object):
     def get_archived_visible_answer_ids(self):
         return set(self.database.get_visible_answer_ids(self.question_id))
 
+    def is_answer_deleted(answer_id):
+        return True
+
     def update(self):
         if False:
             pass
@@ -57,10 +60,11 @@ class QuestionProcessor(object):
                 log.error('get new answer failed')
                 new_ids = self.get_archived_visible_answer_ids()
                 raise e
-            deleted_ids = self.get_archived_visible_answer_ids().difference(new_ids)
-            for i in deleted_ids:
-                log.info('new deleted answer')
-                self.database.mark_answer_deleted(self.question_id, i)
+            invisible_ids = self.get_archived_visible_answer_ids().difference(new_ids)
+            for i in invisible_ids:
+                if self.is_answer_deleted(i):
+                    log.info('new deleted answer')
+                    self.database.mark_answer_deleted(self.question_id, i)
             self.update_answers()
 
 
