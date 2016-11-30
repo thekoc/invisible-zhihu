@@ -10,7 +10,7 @@ class ZhihuDatabase(object):
     """
 
     def __init__(self, dbname):
-        self._connect = sqlite3.connect(dbname, check_same_thread=False)
+        self._connect = sqlite3.connect(dbname, check_same_thread=False, timeout=10)
         self._cursor = cursor = self._connect.cursor()
         cursor.execute(
             """
@@ -76,107 +76,117 @@ class ZhihuDatabase(object):
 
     def insert_topic(self, topic_id, name, url):
         cursor = self._cursor
-        cursor.execute(
-            """
-            INSERT OR IGNORE INTO TOPIC
-            (ID, NAME, URL)
-            VALUES (:tid, :name, :url)
-            """,
-            {'tid': topic_id, 'name': name, 'url': url}
-        )
-        self._connect.commit()
+        try:
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO TOPIC
+                (ID, NAME, URL)
+                VALUES (:tid, :name, :url)
+                """,
+                {'tid': topic_id, 'name': name, 'url': url}
+            )
+        finally:
+            self._connect.commit()
 
     def insert_user(self, user_id, name, url):
         cursor = self._cursor
-        cursor.execute(
-            """
-            INSERT OR IGNORE INTO USER
-            (ID, NAME, URL)
-            VALUES (:uid, :name, :url)
-            """,
-            {'uid': user_id, 'name': name, 'url': url}
-        )
-        self._connect.commit()
+        try:
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO USER
+                (ID, NAME, URL)
+                VALUES (:uid, :name, :url)
+                """,
+                {'uid': user_id, 'name': name, 'url': url}
+            )
+        finally:
+            self._connect.commit()
 
     def insert_question(self, question_id, title, url, excerpt, deleted=False):
         cursor = self._cursor
-        cursor.execute(
-            """
-            INSERT OR IGNORE INTO QUESTION
-            (ID, TITLE, URL, EXCERPT, DELETED)
-            VALUES (:qid, :title, :url, :excerpt, :deleted)
-            """,
-            {
-                'qid': question_id, 'title': title, 'url': url,
-                'excerpt': excerpt, 'deleted': 1 if deleted else 0
-            }
-        )
-        self._connect.commit()
+        try:
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO QUESTION
+                (ID, TITLE, URL, EXCERPT, DELETED)
+                VALUES (:qid, :title, :url, :excerpt, :deleted)
+                """,
+                {
+                    'qid': question_id, 'title': title, 'url': url,
+                    'excerpt': excerpt, 'deleted': 1 if deleted else 0
+                }
+            )
+        finally:
+            self._connect.commit()
 
     def insert_answer(
             self, answer_id, question_id, author_id,
             url, excerpt, content, voteup_count, thanks_count,
             created_time, updated_time, added_time, suggest_edit, deleted=False):
-        logging.debug('inserting anwer, question id is {} answer id id {}'.format(question_id, answer_id))
-        self._cursor.execute(
-            """
-            INSERT OR IGNORE INTO ANSWER
-            (ID, QUESTION_ID, AUTHOR_ID,
-            URL, EXCERPT, CONTENT, VOTEUP_COUNT, THANKS_COUNT,
-            CREATED_TIME, UPDATED_TIME, ADDED_TIME, SUGGEST_EDIT, DELETED)
-            VALUES (:answer_id, :question_id, :author_id,
-                    :url, :excerpt, :content, :voteup_count, :thanks_count,
-                    :created_time, :updated_time, :added_time,
-                    :suggest_edit, :deleted)
-            """,
-            {
-                'answer_id': answer_id,
-                'question_id': question_id,
-                'author_id': author_id,
-                'url': url, 'excerpt': excerpt, 'content': content,
-                'voteup_count': voteup_count, 'thanks_count': thanks_count,
-                'created_time': created_time,
-                'updated_time': updated_time,
-                'added_time': added_time,
-                'suggest_edit': 1 if suggest_edit else 0,
-                'deleted': 1 if deleted else 0
-            }
-        )
-        self._connect.commit()
+        try:
+            self._cursor.execute(
+                """
+                INSERT OR IGNORE INTO ANSWER
+                (ID, QUESTION_ID, AUTHOR_ID,
+                URL, EXCERPT, CONTENT, VOTEUP_COUNT, THANKS_COUNT,
+                CREATED_TIME, UPDATED_TIME, ADDED_TIME, SUGGEST_EDIT, DELETED)
+                VALUES (:answer_id, :question_id, :author_id,
+                        :url, :excerpt, :content, :voteup_count, :thanks_count,
+                        :created_time, :updated_time, :added_time,
+                        :suggest_edit, :deleted)
+                """,
+                {
+                    'answer_id': answer_id,
+                    'question_id': question_id,
+                    'author_id': author_id,
+                    'url': url, 'excerpt': excerpt, 'content': content,
+                    'voteup_count': voteup_count, 'thanks_count': thanks_count,
+                    'created_time': created_time,
+                    'updated_time': updated_time,
+                    'added_time': added_time,
+                    'suggest_edit': 1 if suggest_edit else 0,
+                    'deleted': 1 if deleted else 0
+                }
+            )
+        finally:
+            self._connect.commit()
 
     def insert_comment(
             self, created_time, added_time, content,
             comment_id, answer_id, author_id, question_id, reply_to_id=None,
             deleted=False):
-        logging.debug('inserting answer, question id is {} answer id id {}'.format(question_id, answer_id))
         cursor = self._cursor
-        cursor.execute(
-            """
-            INSERT OR IGNORE INTO COMMENT
-            (ID, ANSWER_ID, QUESTION_ID, AUTHOR_ID, REPLY_TO_AUTHOR_ID,
-            CONTENT, CREATED_TIME, ADDED_TIME, DELETED)
-            VALUES (:cid, :answer_id, :qid, :author_id,
-                    :reply, :content, :c_time, :added_time, :deleted)
-            """,
-            {
-                'cid': comment_id, 'answer_id': answer_id, 'qid': question_id,
-                'author_id': author_id, 'reply': reply_to_id,
-                'content': content, 'c_time': created_time, 'added_time': added_time,
-                'deleted': 1 if deleted else 0
-            }
-        )
-        self._connect.commit()
+        try:
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO COMMENT
+                (ID, ANSWER_ID, QUESTION_ID, AUTHOR_ID, REPLY_TO_AUTHOR_ID,
+                CONTENT, CREATED_TIME, ADDED_TIME, DELETED)
+                VALUES (:cid, :answer_id, :qid, :author_id,
+                        :reply, :content, :c_time, :added_time, :deleted)
+                """,
+                {
+                    'cid': comment_id, 'answer_id': answer_id, 'qid': question_id,
+                    'author_id': author_id, 'reply': reply_to_id,
+                    'content': content, 'c_time': created_time, 'added_time': added_time,
+                    'deleted': 1 if deleted else 0
+                }
+            )
+        finally:
+            self._connect.commit()
 
     def insert_relationship_topic_question_id(self, topic_id, question_id):
-        self._cursor.execute(
-            """
-            INSERT OR IGNORE INTO RELATIONSHIP_TOPIC_QUESTION_ID
-            (TOPIC_ID, QUESTION_ID)
-            VALUES (:tid, :qid)
-            """,
-            {'tid': topic_id, 'qid': question_id}
-        )
-        self._connect.commit()
+        try:
+            self._cursor.execute(
+                """
+                INSERT OR IGNORE INTO RELATIONSHIP_TOPIC_QUESTION_ID
+                (TOPIC_ID, QUESTION_ID)
+                VALUES (:tid, :qid)
+                """,
+                {'tid': topic_id, 'qid': question_id}
+            )
+        finally:
+            self._connect.commit()
 
     def get_visible_answer_ids(self, question_id):
         ids = self._cursor.execute(
