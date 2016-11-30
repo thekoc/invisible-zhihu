@@ -2,6 +2,7 @@ import shutil
 import time
 import logging
 from .tools import qid_to_url, aid_to_url, tid_to_url, uid_to_url
+from .tools import is_answer_deleted
 from .archive import ZhihuDatabase
 
 log = logging.getLogger(__name__)
@@ -47,9 +48,6 @@ class QuestionProcessor(object):
     def get_archived_visible_answer_ids(self):
         return set(self.database.get_visible_answer_ids(self.question_id))
 
-    def is_answer_deleted(answer_id):
-        return True
-
     def update(self):
         if False:
             pass
@@ -62,7 +60,7 @@ class QuestionProcessor(object):
                 raise e
             invisible_ids = self.get_archived_visible_answer_ids().difference(new_ids)
             for i in invisible_ids:
-                if self.is_answer_deleted(i):
+                if is_answer_deleted(self.question_id, i):
                     log.info('new deleted answer')
                     self.database.mark_answer_deleted(self.question_id, i)
             self.update_answers()

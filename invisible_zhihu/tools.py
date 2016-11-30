@@ -1,4 +1,5 @@
 import re
+import requests
 
 
 class QuestionFormatError(Exception):
@@ -29,3 +30,14 @@ def url_to_qid(url):
         return qid[0]
     else:
         raise QuestionFormatError
+
+def is_answer_deleted(question_id, answer_id):
+    try:
+        r = requests.get(aid_to_url(question_id, answer_id), allow_redirects=False, headers=headers)
+    except Exception as e:
+        raise e
+    else:
+        if r.status_code == 302:
+            return True
+        else:
+            return False
