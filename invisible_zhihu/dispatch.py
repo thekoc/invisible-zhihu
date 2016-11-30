@@ -72,7 +72,7 @@ class QuestionDispatcher(object):
                 p.update()
                 if self.stop:
                     log.info('question {qid}: {title} aborted'.format(qid=q.id, title=q.title))
-                    log.info(str(len(self.processor_set)) + 'left')
+                    log.info(str(len(self.processor_set)) + ' left')
                 else:
                     log.info('question {qid}: {title} finished'.format(qid=q.id, title=q.title))
             except:
@@ -88,7 +88,9 @@ class QuestionDispatcher(object):
 
     def run(self):
         try:
-            self.monitor_question_loop(0.5)
+            t = threading.Thread(target=self.monitor_question_loop, args=(0.5,))
+            t.start()
+            t.join()
         except KeyboardInterrupt:
             log.info('cleaning up...')
             self.stop = True
