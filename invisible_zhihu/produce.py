@@ -5,6 +5,7 @@ import logging
 from zhihu import ZhihuClient as WebClient
 from bs4 import BeautifulSoup
 from .tools import url_to_qid
+from .fake_zhihu import headers
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -23,9 +24,6 @@ class QuestionAdder(object):
 
     def get_newest_topic_question_urls(self, topic_id):
         question_urls = []
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36',
-        }
         s = requests.Session()
         try:
             req = s.get('https://www.zhihu.com/topic/{topic_id}/newest'.format(topic_id=topic_id), headers=headers, cookies=self.cookies)
