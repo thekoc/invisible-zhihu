@@ -6,6 +6,7 @@ from zhihu import ZhihuClient as WebClient
 from bs4 import BeautifulSoup
 from .tools import url_to_qid
 from .fake_zhihu import headers
+from requests.exceptions import ConnectionError
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
