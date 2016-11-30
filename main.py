@@ -1,7 +1,6 @@
 import os
 
 from zhihu_oauth import ZhihuClient
-from invisible_zhihu.produce import QuestionSpider
 from invisible_zhihu.process import QuestionProcessor
 from invisible_zhihu.process import AnswerProcessor
 from invisible_zhihu.dispatch import QuestionDispatcher
@@ -14,7 +13,9 @@ import logging
 import logging.config
 
 data_path = 'data'
-logging.config.fileConfig(os.path.join(data_path, 'log.ini'))
+log_config_file = os.path.join(data_path, 'log.ini')
+if os.path.isfile(log_config_file):
+    logging.config.fileConfig(log_config_file)
 
 
 def login():
@@ -35,49 +36,9 @@ def login():
 
 def main():
     client = login()
-    t = QuestionDispatcher(client, 80)
+    t = QuestionDispatcher(client, 100)
+    # t.producer.set_topics(topic_id_list)
     t.run()
-
-
-def test():
-    client = login()
-    # q = client.from_url('https://www.zhihu.com/question/47542623')
-    # p = QuestionProcessor(q)
-    # a = client.from_url('https://www.zhihu.com/question/27182871/answer/35663127')
-    # p = AnswerProcessor(a, 'test')
-
-    # q = client.from_url('https://www.zhihu.com/question/48759787')
-    # p = QuestionProcessor(q)
-    # print(q.status)
-    # for a in q.answers:
-    #     author = a.author
-    #     print(author.id, 'id')
-    #     print(author.name, 'name')
-    a = client.from_url('https://www.zhihu.com/question/414411')
-    print(a.id)
-    try:
-        print(a.title)
-    except requests.exceptions.RetryError as e:
-        print(vars(e.request))
-
-
-def test1():
-    def inf():
-        i = 0
-        while True:
-            i += 1
-            yield i
-    import sqlite3
-    conn = sqlite3.connect('fuck.db')
-    coursor = conn.cursor()
-    coursor.execute('create table if not exists user (id int, name text, age int,  primary key(id, age))')
-    for i in [1, 4, 2, 3, 5]:
-        coursor.execute('insert or replace into user (id, name, age) values (:id, :name, :age)', {'id': i, 'name': 'shit\'', 'age': None})
-    # print(coursor.execute("""select * from user""").fetchall())
-    # coursor.execute('insert into user (id, name) values (\'aa\', \'bb\')')
-    coursor.close()
-    conn.commit()
-    conn.close()
 
 if __name__ == '__main__':
     main()
