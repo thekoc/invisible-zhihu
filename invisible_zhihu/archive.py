@@ -306,6 +306,32 @@ class ZhihuDatabase(object):
         ).fetchall()
         return results
 
+    def get_deleted_answers(self):
+        """Get the answers marked as deleted.
+
+        Returns:
+            list(tuple): Each tuple will be like:
+                (ID, QUESTION_ID, AUTHOR_ID,
+                URL, EXCERPT, CONTENT, VOTEUP_COUNT, THANKS_COUNT,
+                CREATED_TIME, UPDATED_TIME, ADDED_TIME,
+                SUGGEST_EDIT, DELETED)
+        """
+        cursor = self._connect.cursor()
+        flag = True
+        cursor.execute(
+            """
+            SELECT * FROM ANSWER
+            WHERE DELETED = 1
+            """
+        )
+        while flag:
+            a = cursor.fetchone()
+            if a is None:
+                flag = False
+            else:
+                yield a
+        cursor.close()
+
     def get_question(self, question_id, default=None):
         """Get a question row in the QUESTION table.
 
@@ -325,13 +351,16 @@ class ZhihuDatabase(object):
         else:
             return default
 
-    def mark_answer_deleted(self, question_id, answer_id):
+    def mark_answer_deleted(self, question_id, answer_id, deleted=True):
         self._cursor.execute(
             """
-            UPDATE ANSWER SET DELETED = 1
+            UPDATE ANSWER SET DELETED = :deleted
             WHERE ID = :answer_id AND QUESTION_ID = :question_id
             """,
-            {'question_id': question_id, 'answer_id': answer_id}
+            {
+                'question_id': question_id, 'answer_id': answer_id,
+                'deleted': 1 if deleted else 0
+            }
         )
         self._connect.commit()
 
