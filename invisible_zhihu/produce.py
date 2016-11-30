@@ -55,7 +55,7 @@ class QuestionProducer(object):
     def __init__(self, database, client):
         self._database = database
         self._client = client
-        root_topic_id = 19551424
+        root_topic_id = 19776749
         self._adder = QuestionAdder([root_topic_id])
         self.get_new_question_urls = self._adder.get_new_question_urls
         self._gen = self._question_generator()
