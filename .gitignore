@@ -1,10 +1,7 @@
-*.log
+*.json
 *.pkl
-*.html
-*.md
 venv/
 *.pyc
 .DS_Store
-*.question/
-*.json
 *.db
+*.ini
