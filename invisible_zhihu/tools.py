@@ -1,5 +1,6 @@
 import re
 import requests
+from .fake_zhihu import headers
 
 
 class QuestionFormatError(Exception):
@@ -30,6 +31,7 @@ def url_to_qid(url):
         return qid[0]
     else:
         raise QuestionFormatError
+
 
 def is_answer_deleted(question_id, answer_id):
     try:
