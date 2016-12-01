@@ -2,6 +2,8 @@ import sqlite3
 from . import tools
 import logging
 
+log = logging.getLogger(__name__)
+
 
 class ZhihuDatabase(object):
     """A database use sqlite.
@@ -362,17 +364,22 @@ class ZhihuDatabase(object):
             return default
 
     def mark_answer_deleted(self, question_id, answer_id, deleted=True):
-        self._cursor.execute(
-            """
-            UPDATE ANSWER SET DELETED = :deleted
-            WHERE ID = :answer_id AND QUESTION_ID = :question_id
-            """,
-            {
-                'question_id': question_id, 'answer_id': answer_id,
-                'deleted': 1 if deleted else 0
-            }
-        )
-        self._connect.commit()
+        try:
+            self._cursor.execute(
+                """
+                UPDATE ANSWER SET DELETED = :deleted
+                WHERE ID = :answer_id AND QUESTION_ID = :question_id
+                """,
+                {
+                    'question_id': question_id, 'answer_id': answer_id,
+                    'deleted': 1 if deleted else 0
+                }
+            )
+        except Exception as e:
+            log.error(e)
+            raise e
+        finally:
+            self._connect.commit()
 
     def mark_comment_deleted(self, question_id, answer_id, comment_id):
         self._cursor.execute(

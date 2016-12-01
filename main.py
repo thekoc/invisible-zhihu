@@ -16,6 +16,8 @@ data_path = 'data'
 log_config_file = os.path.join(data_path, 'log.ini')
 if os.path.isfile(log_config_file):
     logging.config.fileConfig(log_config_file)
+else:
+    logging.basicConfig(level=logging.DEBUG)
 
 
 def login():
