@@ -75,8 +75,8 @@ class QuestionDispatcher(object):
                     log.info(str(len(self.processor_set)) + ' left')
                 else:
                     log.info('question {qid}: {title} finished'.format(qid=q.id, title=q.title))
-            except:
-                log.debug('except in handle_question')
+            except Exception as e:
+                log.error(str(e))
             finally:
                 self.processor_set.remove(p)
 
