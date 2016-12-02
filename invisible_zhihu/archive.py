@@ -12,7 +12,7 @@ class ZhihuDatabase(object):
     """
 
     def __init__(self, dbname):
-        self._connect = sqlite3.connect(dbname, check_same_thread=False)
+        self._connect = sqlite3.connect(dbname, check_same_thread=False, timeout=20)
         self._cursor = cursor = self._connect.cursor()
         cursor.execute(
             """
@@ -83,7 +83,7 @@ class ZhihuDatabase(object):
                 """
                 INSERT OR IGNORE INTO TOPIC
                 (ID, NAME, URL)
-                VALUES (:tid, :name, :url)
+                VALUES (:tid, :name, :url);
                 """,
                 {'tid': topic_id, 'name': name, 'url': url}
             )
@@ -100,7 +100,7 @@ class ZhihuDatabase(object):
                 """
                 INSERT OR IGNORE INTO USER
                 (ID, NAME, URL)
-                VALUES (:uid, :name, :url)
+                VALUES (:uid, :name, :url);
                 """,
                 {'uid': user_id, 'name': name, 'url': url}
             )
@@ -117,7 +117,7 @@ class ZhihuDatabase(object):
                 """
                 INSERT OR IGNORE INTO QUESTION
                 (ID, TITLE, URL, EXCERPT, DELETED)
-                VALUES (:qid, :title, :url, :excerpt, :deleted)
+                VALUES (:qid, :title, :url, :excerpt, :deleted);
                 """,
                 {
                     'qid': question_id, 'title': title, 'url': url,
@@ -144,7 +144,7 @@ class ZhihuDatabase(object):
                 VALUES (:answer_id, :question_id, :author_id,
                         :url, :excerpt, :content, :voteup_count, :thanks_count,
                         :created_time, :updated_time, :added_time,
-                        :suggest_edit, :deleted)
+                        :suggest_edit, :deleted);
                 """,
                 {
                     'answer_id': answer_id,
@@ -177,7 +177,7 @@ class ZhihuDatabase(object):
                 (ID, ANSWER_ID, QUESTION_ID, AUTHOR_ID, REPLY_TO_AUTHOR_ID,
                 CONTENT, CREATED_TIME, ADDED_TIME, DELETED)
                 VALUES (:cid, :answer_id, :qid, :author_id,
-                        :reply, :content, :c_time, :added_time, :deleted)
+                        :reply, :content, :c_time, :added_time, :deleted);
                 """,
                 {
                     'cid': comment_id, 'answer_id': answer_id, 'qid': question_id,
@@ -198,7 +198,7 @@ class ZhihuDatabase(object):
                 """
                 INSERT OR IGNORE INTO RELATIONSHIP_TOPIC_QUESTION_ID
                 (TOPIC_ID, QUESTION_ID)
-                VALUES (:tid, :qid)
+                VALUES (:tid, :qid);
                 """,
                 {'tid': topic_id, 'qid': question_id}
             )
@@ -213,7 +213,7 @@ class ZhihuDatabase(object):
             self._cursor.execute(
                 """
                 UPDATE ANSWER SET DELETED = :deleted
-                WHERE ID = :answer_id AND QUESTION_ID = :question_id
+                WHERE ID = :answer_id AND QUESTION_ID = :question_id;
                 """,
                 {
                     'question_id': question_id, 'answer_id': answer_id,
@@ -231,7 +231,7 @@ class ZhihuDatabase(object):
             self._cursor.execute(
                 """
                 UPDATE COMMENT SET DELETED = 1
-                WHERE ID = :comment_id AND QUESTION_ID = :question_id AND ANSWER_ID = :answer_id
+                WHERE ID = :comment_id AND QUESTION_ID = :question_id AND ANSWER_ID = :answer_id;
                 """,
                 {
                     'question_id': question_id, 'answer_id': answer_id,
