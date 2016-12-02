@@ -87,6 +87,9 @@ class ZhihuDatabase(object):
                 """,
                 {'tid': topic_id, 'name': name, 'url': url}
             )
+        except Exception as e:
+            log.error(e)
+            raise e
         finally:
             self._connect.commit()
 
@@ -101,6 +104,9 @@ class ZhihuDatabase(object):
                 """,
                 {'uid': user_id, 'name': name, 'url': url}
             )
+        except Exception as e:
+            log.error(e)
+            raise e
         finally:
             self._connect.commit()
 
@@ -118,6 +124,9 @@ class ZhihuDatabase(object):
                     'excerpt': excerpt, 'deleted': 1 if deleted else 0
                 }
             )
+        except Exception as e:
+            log.error(e)
+            raise e
         finally:
             self._connect.commit()
 
@@ -150,6 +159,9 @@ class ZhihuDatabase(object):
                     'deleted': 1 if deleted else 0
                 }
             )
+        except Exception as e:
+            log.error(e)
+            raise e
         finally:
             self._connect.commit()
 
@@ -174,6 +186,9 @@ class ZhihuDatabase(object):
                     'deleted': 1 if deleted else 0
                 }
             )
+        except Exception as e:
+            log.error(e)
+            raise e
         finally:
             self._connect.commit()
 
@@ -187,6 +202,45 @@ class ZhihuDatabase(object):
                 """,
                 {'tid': topic_id, 'qid': question_id}
             )
+        except Exception as e:
+            log.error(e)
+            raise e
+        finally:
+            self._connect.commit()
+
+    def mark_answer_deleted(self, question_id, answer_id, deleted=True):
+        try:
+            self._cursor.execute(
+                """
+                UPDATE ANSWER SET DELETED = :deleted
+                WHERE ID = :answer_id AND QUESTION_ID = :question_id
+                """,
+                {
+                    'question_id': question_id, 'answer_id': answer_id,
+                    'deleted': 1 if deleted else 0
+                }
+            )
+        except Exception as e:
+            log.error(e)
+            raise e
+        finally:
+            self._connect.commit()
+
+    def mark_comment_deleted(self, question_id, answer_id, comment_id):
+        try:
+            self._cursor.execute(
+                """
+                UPDATE COMMENT SET DELETED = 1
+                WHERE ID = :comment_id AND QUESTION_ID = :question_id AND ANSWER_ID = :answer_id
+                """,
+                {
+                    'question_id': question_id, 'answer_id': answer_id,
+                    'comment_id': comment_id
+                }
+            )
+        except Exception as e:
+            log.error(e)
+            raise e
         finally:
             self._connect.commit()
 
@@ -362,37 +416,6 @@ class ZhihuDatabase(object):
             return result[:-1] + (True if result[-1] == 1 else False,)
         else:
             return default
-
-    def mark_answer_deleted(self, question_id, answer_id, deleted=True):
-        try:
-            self._cursor.execute(
-                """
-                UPDATE ANSWER SET DELETED = :deleted
-                WHERE ID = :answer_id AND QUESTION_ID = :question_id
-                """,
-                {
-                    'question_id': question_id, 'answer_id': answer_id,
-                    'deleted': 1 if deleted else 0
-                }
-            )
-        except Exception as e:
-            log.error(e)
-            raise e
-        finally:
-            self._connect.commit()
-
-    def mark_comment_deleted(self, question_id, answer_id, comment_id):
-        self._cursor.execute(
-            """
-            UPDATE COMMENT SET DELETED = 1
-            WHERE ID = :comment_id AND QUESTION_ID = :question_id AND ANSWER_ID = :answer_id
-            """,
-            {
-                'question_id': question_id, 'answer_id': answer_id,
-                'comment_id': comment_id
-            }
-        )
-        self._connect.commit()
 
     def update_answer_content(self, answer_id, content):
         pass
