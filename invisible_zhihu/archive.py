@@ -88,7 +88,7 @@ class ZhihuDatabase(object):
                 {'tid': topic_id, 'name': name, 'url': url}
             )
         except Exception as e:
-            log.error('In insert_topic: ' + e)
+            log.error('In insert_topic: ' + str(e))
             raise e
         finally:
             self._connect.commit()
@@ -105,7 +105,7 @@ class ZhihuDatabase(object):
                 {'uid': user_id, 'name': name, 'url': url}
             )
         except Exception as e:
-            log.error('In insert_user: ' + e)
+            log.error('In insert_user: ' + str(e))
             raise e
         finally:
             self._connect.commit()
@@ -125,7 +125,7 @@ class ZhihuDatabase(object):
                 }
             )
         except Exception as e:
-            log.error('In insert_question: ' + e)
+            log.error('In insert_question: ' + str(e))
             raise e
         finally:
             self._connect.commit()
@@ -160,7 +160,7 @@ class ZhihuDatabase(object):
                 }
             )
         except Exception as e:
-            log.error('In insert_answer: ' + e)
+            log.error('In insert_answer: ' + str(e))
             raise e
         finally:
             self._connect.commit()
@@ -187,7 +187,7 @@ class ZhihuDatabase(object):
                 }
             )
         except Exception as e:
-            log.error('In insert_comment: ' + e)
+            log.error('In insert_comment: ' + str(e))
             raise e
         finally:
             self._connect.commit()
@@ -203,7 +203,7 @@ class ZhihuDatabase(object):
                 {'tid': topic_id, 'qid': question_id}
             )
         except Exception as e:
-            log.error('In insert_relationship_topic_question_id: ' + e)
+            log.error('In insert_relationship_topic_question_id: ' + str(e))
             raise e
         finally:
             self._connect.commit()
@@ -221,7 +221,7 @@ class ZhihuDatabase(object):
                 }
             )
         except Exception as e:
-            log.error('In mark_answer_deleted: ' + e)
+            log.error('In mark_answer_deleted: ' + str(e))
             raise e
         finally:
             self._connect.commit()
@@ -239,7 +239,7 @@ class ZhihuDatabase(object):
                 }
             )
         except Exception as e:
-            log.error('In mark_comment_deleted: ' + e)
+            log.error('In mark_comment_deleted: ' + str(e))
             raise e
         finally:
             self._connect.commit()
