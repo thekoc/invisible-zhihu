@@ -31,7 +31,6 @@ class QuestionDispatcher(object):
 
     def __init__(self, client, process_num=100):
         self.processes_max_num = process_num
-        self.max_task_size = 3 * self.processes_max_num
         self.stop = False
         data_path = 'data'
         if not os.path.isdir(data_path):
