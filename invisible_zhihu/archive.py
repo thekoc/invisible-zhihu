@@ -3,6 +3,7 @@ from . import tools
 import logging
 import time
 from threading import Lock
+from threading import Thread
 
 log = logging.getLogger(__name__)
 
@@ -12,16 +13,31 @@ total_time = time.time()
 lock = Lock()
 
 
+def show_time():
+    global func_dict
+    print('start')
+    while True:
+        time.sleep(3)
+        items = list(func_dict.items())
+        items.sort(key=lambda x: -x[1][1] / x[1][0])
+        for name, data in items:
+            print(name, data[1] / data[0])
+t = Thread(target=show_time)
+t.start()
+
+
 def what_time(func):
     def new_func(*args, **kwargs):
-        global total_num, lock
-        # s = time.time()
+        global total_num, lock, func_dict
+        s = time.time()
         v = func(*args, **kwargs)
-        # end = time.time()
+        end = time.time()
         with lock:
-            total_num += 1
-        # print('function {} costs {} secs'.format(func.__name__, end - s))
-        print('average: {}'.format((time.time() - total_time) / total_num))
+            # total_num += 1
+            l = func_dict.setdefault(func.__name__, [0, 0])
+            l[0] += 1
+            l[1] += end - s
+        # print('average: {}'.format((time.time() - total_time) / total_num))
         return v
     return new_func
 
@@ -273,6 +289,7 @@ class ZhihuDatabase(object):
         finally:
             self._connect.commit()
 
+    @what_time
     def get_visible_answer_ids(self, question_id):
         ids = self._cursor.execute(
             """
@@ -282,6 +299,7 @@ class ZhihuDatabase(object):
         ).fetchall()
         return [i[0] for i in ids]
 
+    @what_time
     def get_visible_comment_ids(self, answer_id):
         ids = self._cursor.execute(
             """
@@ -291,6 +309,7 @@ class ZhihuDatabase(object):
         ).fetchall()
         return [i[0] for i in ids]
 
+    @what_time
     def get_question_urls(self):
         urls = self._cursor.execute(
             """
@@ -299,6 +318,7 @@ class ZhihuDatabase(object):
         )
         return [u[0] for u in urls]
 
+    @what_time
     def get_user(self, user_id, default=None):
         """Get a user row in the USER table.
 
@@ -319,6 +339,7 @@ class ZhihuDatabase(object):
         ).fetchall()
         return results[0] if results else default
 
+    @what_time
     def get_comment(self, question_id, answer_id, comment_id, default=None):
         """Get a comment row in the COMMENT table.
 
@@ -341,6 +362,7 @@ class ZhihuDatabase(object):
         else:
             return default
 
+    @what_time
     def get_comments(self, question_id, answer_id, default=None):
         """Get comments under the answer.
 
@@ -358,6 +380,7 @@ class ZhihuDatabase(object):
         ).fetchall()
         return results if default is None else default
 
+    @what_time
     def get_answer(self, question_id, answer_id, default=None, updated_time=None):
         """Get an answer row in the ANSWER table.
 
@@ -381,6 +404,7 @@ class ZhihuDatabase(object):
         else:
             return default
 
+    @what_time
     def get_answer_history(self, question_id, answer_id):
         """Get a list that contain all the version of this answer.
 
@@ -401,6 +425,7 @@ class ZhihuDatabase(object):
         ).fetchall()
         return results
 
+    @what_time
     def get_deleted_answers(self):
         """Get the answers marked as deleted.
 
@@ -427,6 +452,7 @@ class ZhihuDatabase(object):
                 yield a
         cursor.close()
 
+    @what_time
     def get_question(self, question_id, default=None):
         """Get a question row in the QUESTION table.
 

@@ -103,10 +103,12 @@ class AnswerProcessor(object):
         return self.answer.excerpt
 
     def insert(self):
+        excerpt = self.answer.excerpt
+        content = self.answer.content
         log.debug('inserting answer %d in question %d', self.answer_id, self.question_id)
         self.database.insert_answer(
             self.answer_id, self.question_id, self.author_id,
-            self.url, self.excerpt, self.content,
+            self.url, excerpt, content,
             self.voteup_count, self.thanks_count,
             self.created_time, self.updated_time, int(time.time()),
             self.suggest_edit)
