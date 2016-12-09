@@ -53,6 +53,7 @@ class QuestionDispatcher(object):
         while not self.stop:
             start_time = time.time()
             if self.process_count < self.processes_max_num and not self.stop:
+                log.debug("now: " + str(self.process_count) + " max: " + str(self.processes_max_num))
                 url = self.producer.next_question_url()
                 log.debug('new url %s', url)
                 pool.apply_async(self.handle_question, args=(url,))

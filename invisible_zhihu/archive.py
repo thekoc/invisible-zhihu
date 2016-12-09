@@ -1,8 +1,29 @@
 import sqlite3
 from . import tools
 import logging
+import time
+from threading import Lock
 
 log = logging.getLogger(__name__)
+
+func_dict = {}
+total_num = 0
+total_time = time.time()
+lock = Lock()
+
+
+def what_time(func):
+    def new_func(*args, **kwargs):
+        global total_num, lock
+        # s = time.time()
+        v = func(*args, **kwargs)
+        # end = time.time()
+        with lock:
+            total_num += 1
+        # print('function {} costs {} secs'.format(func.__name__, end - s))
+        print('average: {}'.format((time.time() - total_time) / total_num))
+        return v
+    return new_func
 
 
 class ZhihuDatabase(object):
@@ -76,6 +97,7 @@ class ZhihuDatabase(object):
         self._connect.commit()
         self._connect.close()
 
+    @what_time
     def insert_topic(self, topic_id, name, url):
         cursor = self._cursor
         try:
@@ -93,6 +115,7 @@ class ZhihuDatabase(object):
         finally:
             self._connect.commit()
 
+    @what_time
     def insert_user(self, user_id, name, url):
         cursor = self._cursor
         try:
@@ -110,6 +133,7 @@ class ZhihuDatabase(object):
         finally:
             self._connect.commit()
 
+    @what_time
     def insert_question(self, question_id, title, url, excerpt, deleted=False):
         cursor = self._cursor
         try:
@@ -130,6 +154,7 @@ class ZhihuDatabase(object):
         finally:
             self._connect.commit()
 
+    @what_time
     def insert_answer(
             self, answer_id, question_id, author_id,
             url, excerpt, content, voteup_count, thanks_count,
@@ -160,11 +185,12 @@ class ZhihuDatabase(object):
                 }
             )
         except Exception as e:
-            log.error('In insert_answer: ' + str(e))
+            log.error('In insert_answer: %s, id is %d', str(e), answer_id)
             raise e
         finally:
             self._connect.commit()
 
+    @what_time
     def insert_comment(
             self, created_time, added_time, content,
             comment_id, answer_id, author_id, question_id, reply_to_id=None,
@@ -192,6 +218,7 @@ class ZhihuDatabase(object):
         finally:
             self._connect.commit()
 
+    @what_time
     def insert_relationship_topic_question_id(self, topic_id, question_id):
         try:
             self._cursor.execute(
@@ -208,6 +235,7 @@ class ZhihuDatabase(object):
         finally:
             self._connect.commit()
 
+    @what_time
     def mark_answer_deleted(self, question_id, answer_id, deleted=True):
         try:
             self._cursor.execute(
@@ -226,6 +254,7 @@ class ZhihuDatabase(object):
         finally:
             self._connect.commit()
 
+    @what_time
     def mark_comment_deleted(self, question_id, answer_id, comment_id):
         try:
             self._cursor.execute(
@@ -416,6 +445,9 @@ class ZhihuDatabase(object):
             return result[:-1] + (True if result[-1] == 1 else False,)
         else:
             return default
+
+    def commit(self):
+        self._connect.commit()
 
     def update_answer_content(self, answer_id, content):
         pass

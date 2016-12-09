@@ -5,4 +5,5 @@ venv/
 .DS_Store
 *.db
 *.ini
+*.log
 main.py

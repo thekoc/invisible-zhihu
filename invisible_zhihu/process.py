@@ -20,10 +20,7 @@ class QuestionProcessor(object):
         self.title = self.question.title
         self.excerpt = self.question.excerpt
         self.database.insert_question(self.question_id, self.title, self.url, self.excerpt)
-        for topic in self.question.topics:
-            tid = topic.id
-            self.database.insert_topic(tid, topic.name, tid_to_url(tid))
-            self.database.insert_relationship_topic_question_id(tid, self.question_id)
+        self.database.commit()
 
     def update_answers(self):
         for a in self.question.answers:
@@ -59,10 +56,16 @@ class QuestionProcessor(object):
                 new_ids = self.get_archived_visible_answer_ids()
                 raise e
             invisible_ids = self.get_archived_visible_answer_ids().difference(new_ids)
-            for i in invisible_ids:
-                if is_answer_deleted(self.question_id, i):
-                    log.info('new deleted answer')
-                    self.database.mark_answer_deleted(self.question_id, i)
+            try:
+                for i in invisible_ids:
+                    if is_answer_deleted(self.question_id, i):
+                        log.info('new deleted answer')
+                        self.database.mark_answer_deleted(self.question_id, i)
+            except Exception as e:
+                log.error(str(e))
+                raise e
+            finally:
+                self.database.commit()
             self.update_answers()
 
 
@@ -80,10 +83,16 @@ class AnswerProcessor(object):
         self.created_time = self.answer.created_time
         self.updated_time = self.answer.updated_time
         self.suggest_edit = self.answer.suggest_edit.status
-        if self.should_insert():
-            self.insert()
-        author = self.answer.author
-        self.database.insert_user(author.id, author.name, uid_to_url(author.id))
+        try:
+            if self.should_insert():
+                self.insert()
+            author = self.answer.author
+            self.database.insert_user(author.id, author.name, uid_to_url(author.id))
+        except Exception as e:
+            log.error(str(e))
+            raise e
+        finally:
+            self.database.commit()
 
     @property
     def content(self):
@@ -142,7 +151,13 @@ class AnswerProcessor(object):
         archived_ids = self.get_archived_visible_comment_ids()
         deleted_ids = archived_ids.difference(new_ids)
         added_ids = new_ids.difference(archived_ids)
-        for i in deleted_ids:
-            log.info('new deleted comment')
-            self.database.mark_comment_deleted(self.question_id, self.answer_id, i)
-        self.append_added_comments(added_ids)
+        try:
+            for i in deleted_ids:
+                log.info('new deleted comment')
+                self.database.mark_comment_deleted(self.question_id, self.answer_id, i)
+            self.append_added_comments(added_ids)
+        except Exception as e:
+            log.error(str(e))
+            raise e
+        finally:
+            self.database.commit()
