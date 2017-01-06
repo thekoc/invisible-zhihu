@@ -6,3 +6,5 @@ venv/
 *.db
 *.ini
 main.py
+*.log
+*.db-journal
