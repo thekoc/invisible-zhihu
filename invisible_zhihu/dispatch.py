@@ -53,6 +53,7 @@ class QuestionDispatcher(object):
         while not self.stop:
             start_time = time.time()
             if self.process_count < self.processes_max_num and not self.stop:
+                log.debug("now: " + str(self.process_count) + " max: " + str(self.processes_max_num))
                 url = self.producer.next_question_url()
                 log.debug('new url %s', url)
                 pool.apply_async(self.handle_question, args=(url,))
@@ -63,21 +64,26 @@ class QuestionDispatcher(object):
         log.debug('monitor_question_loop stopped')
 
     def handle_question(self, url):
-        q = self.client.from_url(url)
-        if not self.stop:
-            p = QuestionProcessor(q)
-            self.processor_set.add(p)
-            try:
-                p.update()
-                if self.stop:
-                    log.info('question {qid}: {title} aborted'.format(qid=q.id, title=q.title))
-                    log.info(str(len(self.processor_set)) + ' left')
-                else:
-                    log.info('question {qid}: {title} finished'.format(qid=q.id, title=q.title))
-            except Exception as e:
-                log.error(str(e))
-            finally:
-                self.processor_set.remove(p)
+        try:
+            q = self.client.from_url(url)
+            if not self.stop:
+                p = QuestionProcessor(q)
+                self.processor_set.add(p)
+                try:
+                    p.update()
+                    if self.stop:
+                        log.info('question {qid}: {title} aborted'.format(qid=q.id, title=q.title))
+                        log.info(str(len(self.processor_set)) + ' left')
+                    else:
+                        log.info('question {qid}: {title} finished'.format(qid=q.id, title=q.title))
+                except Exception as e:
+                    log.error(str(e))
+                finally:
+                    self.processor_set.remove(p)
+        except Exception as e:
+            log.error(str(e))
+            raise e
+
 
     def run_single(self):
         while True:

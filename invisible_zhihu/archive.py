@@ -1,8 +1,66 @@
 import sqlite3
 from . import tools
 import logging
+import time
+from threading import Lock
+from threading import Thread
+from .tools import Actor
+from .tools import singleton
 
 log = logging.getLogger(__name__)
+
+
+class SQLActor(Actor):
+    import sqlite3
+    def __init__(self, *args, **kwargs):
+        super(SQLActor, self).__init__()
+        kwargs.update({'check_same_thread': False})
+        self.conn = sqlite3.connect(*args, **kwargs)
+        self.cursor = self.conn.cursor()
+
+    def run(self):
+        while True:
+            try:
+                msg = self.recv()
+                if msg == ('commit',):
+                    pass
+                else:
+                    cursor = self.conn.cursor()
+                    args, kwargs = msg
+                    cursor.execute(*args, **kwargs)
+            except Exception as e:
+                raise e
+
+
+    def send(self, msg: tuple):
+        super(SQLActor, self).send(msg)
+
+    def __del__(self):
+        self.cursor.close()
+        self.conn.close()
+
+
+@singleton
+class TestSQL(object):
+    import sqlite3
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+        self.actor = SQLActor(*args, **kwargs)
+        self.actor.start()
+
+    def execute(self, *args, **kwargs):
+        sql = args[0]
+        if sql.strip().lower().startswith('select'):
+            conn = sqlite3.connect(*self.args, **self.kwargs)
+            c = conn.cursor()
+            return c.execute(*args, **kwargs)
+        else:
+            self.actor.send((args, kwargs))
+
+    def commit(self):
+        self.actor.send(('commit',))
+
 
 
 class ZhihuDatabase(object):
@@ -12,8 +70,8 @@ class ZhihuDatabase(object):
     """
 
     def __init__(self, dbname):
-        self._connect = sqlite3.connect(dbname, check_same_thread=False)
-        self._cursor = cursor = self._connect.cursor()
+        self._connect = TestSQL(dbname, check_same_thread=False, timeout=5)
+        self._cursor = cursor = self._connect
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS USER
@@ -72,18 +130,15 @@ class ZhihuDatabase(object):
 
     def __del__(self):
         """Save data on close."""
-        self._cursor.close()
-        self._connect.commit()
-        self._connect.close()
 
-    def insert_topic(self, topic_id, name, url):
+    def insert_topic(self, topic_id, name, url, auto_commit=True):
         cursor = self._cursor
         try:
             cursor.execute(
                 """
                 INSERT OR IGNORE INTO TOPIC
                 (ID, NAME, URL)
-                VALUES (:tid, :name, :url)
+                VALUES (:tid, :name, :url);
                 """,
                 {'tid': topic_id, 'name': name, 'url': url}
             )
@@ -91,16 +146,17 @@ class ZhihuDatabase(object):
             log.error('In insert_topic: ' + str(e))
             raise e
         finally:
-            self._connect.commit()
+            if auto_commit:
+                self._connect.commit()
 
-    def insert_user(self, user_id, name, url):
+    def insert_user(self, user_id: str, name, url, auto_commit=True):
         cursor = self._cursor
         try:
             cursor.execute(
                 """
                 INSERT OR IGNORE INTO USER
                 (ID, NAME, URL)
-                VALUES (:uid, :name, :url)
+                VALUES (:uid, :name, :url);
                 """,
                 {'uid': user_id, 'name': name, 'url': url}
             )
@@ -108,16 +164,17 @@ class ZhihuDatabase(object):
             log.error('In insert_user: ' + str(e))
             raise e
         finally:
-            self._connect.commit()
+            if auto_commit:
+                self._connect.commit()
 
-    def insert_question(self, question_id, title, url, excerpt, deleted=False):
+    def insert_question(self, question_id, title, url, excerpt, deleted=False, auto_commit=True):
         cursor = self._cursor
         try:
             cursor.execute(
                 """
                 INSERT OR IGNORE INTO QUESTION
                 (ID, TITLE, URL, EXCERPT, DELETED)
-                VALUES (:qid, :title, :url, :excerpt, :deleted)
+                VALUES (:qid, :title, :url, :excerpt, :deleted);
                 """,
                 {
                     'qid': question_id, 'title': title, 'url': url,
@@ -128,12 +185,14 @@ class ZhihuDatabase(object):
             log.error('In insert_question: ' + str(e))
             raise e
         finally:
-            self._connect.commit()
+            if auto_commit:
+                self._connect.commit()
 
     def insert_answer(
             self, answer_id, question_id, author_id,
             url, excerpt, content, voteup_count, thanks_count,
-            created_time, updated_time, added_time, suggest_edit, deleted=False):
+            created_time, updated_time, added_time, suggest_edit,
+            deleted=False, auto_commit=True, ):
         try:
             self._cursor.execute(
                 """
@@ -144,7 +203,7 @@ class ZhihuDatabase(object):
                 VALUES (:answer_id, :question_id, :author_id,
                         :url, :excerpt, :content, :voteup_count, :thanks_count,
                         :created_time, :updated_time, :added_time,
-                        :suggest_edit, :deleted)
+                        :suggest_edit, :deleted);
                 """,
                 {
                     'answer_id': answer_id,
@@ -160,15 +219,16 @@ class ZhihuDatabase(object):
                 }
             )
         except Exception as e:
-            log.error('In insert_answer: ' + str(e))
+            log.error('In insert_answer: {}, id is {}'.format(str(e), answer_id))
             raise e
         finally:
-            self._connect.commit()
+            if auto_commit:
+                self._connect.commit()
 
     def insert_comment(
             self, created_time, added_time, content,
             comment_id, answer_id, author_id, question_id, reply_to_id=None,
-            deleted=False):
+            deleted=False, auto_commit=True):
         cursor = self._cursor
         try:
             cursor.execute(
@@ -177,7 +237,7 @@ class ZhihuDatabase(object):
                 (ID, ANSWER_ID, QUESTION_ID, AUTHOR_ID, REPLY_TO_AUTHOR_ID,
                 CONTENT, CREATED_TIME, ADDED_TIME, DELETED)
                 VALUES (:cid, :answer_id, :qid, :author_id,
-                        :reply, :content, :c_time, :added_time, :deleted)
+                        :reply, :content, :c_time, :added_time, :deleted);
                 """,
                 {
                     'cid': comment_id, 'answer_id': answer_id, 'qid': question_id,
@@ -190,15 +250,16 @@ class ZhihuDatabase(object):
             log.error('In insert_comment: ' + str(e))
             raise e
         finally:
-            self._connect.commit()
+            if auto_commit:
+                self._connect.commit()
 
-    def insert_relationship_topic_question_id(self, topic_id, question_id):
+    def insert_relationship_topic_question_id(self, topic_id, question_id, auto_commit=True):
         try:
             self._cursor.execute(
                 """
                 INSERT OR IGNORE INTO RELATIONSHIP_TOPIC_QUESTION_ID
                 (TOPIC_ID, QUESTION_ID)
-                VALUES (:tid, :qid)
+                VALUES (:tid, :qid);
                 """,
                 {'tid': topic_id, 'qid': question_id}
             )
@@ -206,14 +267,15 @@ class ZhihuDatabase(object):
             log.error('In insert_relationship_topic_question_id: ' + str(e))
             raise e
         finally:
-            self._connect.commit()
+            if auto_commit:
+                self._connect.commit()
 
-    def mark_answer_deleted(self, question_id, answer_id, deleted=True):
+    def mark_answer_deleted(self, question_id, answer_id, deleted=True, auto_commit=True):
         try:
             self._cursor.execute(
                 """
                 UPDATE ANSWER SET DELETED = :deleted
-                WHERE ID = :answer_id AND QUESTION_ID = :question_id
+                WHERE ID = :answer_id AND QUESTION_ID = :question_id;
                 """,
                 {
                     'question_id': question_id, 'answer_id': answer_id,
@@ -224,14 +286,15 @@ class ZhihuDatabase(object):
             log.error('In mark_answer_deleted: ' + str(e))
             raise e
         finally:
-            self._connect.commit()
+            if auto_commit:
+                self._connect.commit()
 
-    def mark_comment_deleted(self, question_id, answer_id, comment_id):
+    def mark_comment_deleted(self, question_id, answer_id, comment_id, auto_commit=True):
         try:
             self._cursor.execute(
                 """
                 UPDATE COMMENT SET DELETED = 1
-                WHERE ID = :comment_id AND QUESTION_ID = :question_id AND ANSWER_ID = :answer_id
+                WHERE ID = :comment_id AND QUESTION_ID = :question_id AND ANSWER_ID = :answer_id;
                 """,
                 {
                     'question_id': question_id, 'answer_id': answer_id,
@@ -242,7 +305,8 @@ class ZhihuDatabase(object):
             log.error('In mark_comment_deleted: ' + str(e))
             raise e
         finally:
-            self._connect.commit()
+            if auto_commit:
+                self._connect.commit()
 
     def get_visible_answer_ids(self, question_id):
         ids = self._cursor.execute(
@@ -416,6 +480,9 @@ class ZhihuDatabase(object):
             return result[:-1] + (True if result[-1] == 1 else False,)
         else:
             return default
+
+    def commit(self):
+        self._connect.commit()
 
     def update_answer_content(self, answer_id, content):
         pass

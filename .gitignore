@@ -4,7 +4,9 @@ venv/
 *.pyc
 .DS_Store
 *.db
+*.db-journal
 *.ini
+*.log
 main.py
 *.log
 *.db-journal

@@ -17,11 +17,11 @@ class QuestionAdder(object):
         self.web_client = WebClient()
         self.cookies_path = 'cookies.json'
         self.topic_ids = topic_ids
-        self.cookies = json.load(open(self.cookies_path))
         if os.path.isfile(self.cookies_path):
             self.web_client.login_with_cookies(self.cookies_path)
         else:
             self.web_client.create_cookies(self.cookies_path)
+        self.cookies = json.load(open(self.cookies_path))
 
     def get_newest_topic_question_urls(self, topic_id):
         question_urls = []

@@ -1,6 +1,10 @@
 import re
 import requests
+from queue import Queue
+from threading import Thread
+from threading import Event
 from .fake_zhihu import headers
+
 
 
 class QuestionFormatError(Exception):
@@ -43,3 +47,54 @@ def is_answer_deleted(question_id, answer_id):
             return True
         else:
             return False
+
+
+def singleton(cls):
+    instances = {}
+
+    def _singleton(*args, **kw):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kw)
+        return instances[cls]
+
+    return _singleton
+
+class ActorExit(Exception):
+    pass
+
+class Actor:
+    def __init__(self):
+        self._mailbox = Queue()
+
+    def send(self, msg):
+        self._mailbox.put(msg)
+
+    def recv(self):
+        msg = self._mailbox.get()
+        if msg is ActorExit:
+            raise ActorExit()
+        return msg
+
+    def close(self):
+        self.send(ActorExit)
+
+    def start(self):
+        self._terminated = Event()
+        t = Thread(target=self._bootstrap)
+
+        t.start()
+
+    def _bootstrap(self):
+        try:
+            self.run()
+        except ActorExit:
+            pass
+        finally:
+            self._terminated.set()
+
+    def join(self):
+        self._terminated.wait()
+
+    def run(self):
+        while True:
+            msg = self.recv()
